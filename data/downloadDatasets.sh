@@ -15,8 +15,8 @@ mv t10k-images-idx3-ubyte.gz test-images.gz
 mv t10k-labels-idx1-ubyte.gz test-labels.gz
 
 gunzip train-images.gz
-gunzip train-labels
-gunzip test-images
-gunzip test-labels
+gunzip train-labels.gz
+gunzip test-images.gz
+gunzip test-labels.gz
 
 exit 0
