@@ -1,5 +1,5 @@
 from tensorflow import keras
-from sve.biInteraction import BiInteraction
+from sve.biInteraction import BiInteractionPooling
 
 
 class SVE(keras.Model):
@@ -21,9 +21,9 @@ class SVE(keras.Model):
         :return:
         """
         encoder: keras.Model = keras.Sequential()
-        encoder.add(keras.Input(shape=(28, 28, 1)))
+        encoder.add(keras.Input(shape=(28, 28)))
         encoder.add(keras.layers.Embedding())
-        encoder.add(BiInteraction())
+        encoder.add(BiInteractionPooling())
         encoder.add(keras.layers.Dense(activation="sigmoid"))
 
         x_mean = keras.layers.Dense(name="x_mean")
@@ -48,5 +48,7 @@ class SVE(keras.Model):
     def call(self, inputs):
         pass
 
-
-
+    def __str__(self):
+        return "Encoder: {encoder}\nDecoder: \n{decoder}".format(
+            encoder=self.encoder.summary(),
+            decoder=self.decoder.summary())
