@@ -34,8 +34,8 @@ class BiInteractionPooling(keras.Layer):
 
         concated_embeds_value = inputs
         square_of_sum = tf.square(
-            self.reduce_sum(concated_embeds_value, axis=1, keep_dims=True))
-        sum_of_square = self.reduce_sum(
+            tf.reduce_sum(concated_embeds_value, axis=1, keep_dims=True))
+        sum_of_square = tf.reduce_sum(
             concated_embeds_value * concated_embeds_value, axis=1, keep_dims=True)
         cross_term = 0.5 * (square_of_sum - sum_of_square)
 
@@ -44,21 +44,3 @@ class BiInteractionPooling(keras.Layer):
     @staticmethod
     def compute_output_shape(input_shape):
         return None, 1, input_shape[-1]
-
-    @staticmethod
-    def reduce_sum(input_tensor,
-                   axis=None,
-                   keep_dims=False,
-                   name=None,
-                   reduction_indices=None):
-        try:
-            return tf.reduce_sum(input_tensor,
-                                 axis=axis,
-                                 keep_dims=keep_dims,
-                                 name=name,
-                                 reduction_indices=reduction_indices)
-        except TypeError:
-            return tf.reduce_sum(input_tensor,
-                                 axis=axis,
-                                 keepdims=keep_dims,
-                                 name=name)
