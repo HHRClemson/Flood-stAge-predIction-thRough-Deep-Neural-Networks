@@ -14,69 +14,36 @@ from tensorflow.keras import backend as K
 
 class BiInteractionPooling(keras.Layer):
 
-    def __init__(self, **kwargs):
+    def __init__(self, dimension=3, **kwargs):
         super(BiInteractionPooling, self).__init__(**kwargs)
+        self.dimension = dimension
 
     def build(self, input_shape):
         if len(input_shape) != 3:
             raise ValueError(
-                "Unexpected inputs dimensions {given}, expected 3 dimensions"
-                    .format(given=len(input_shape)))
+                "Unexpected inputs dimensions {given}, expected {expected} dimensions".format(
+                    given=len(input_shape), expected=self.dimension))
 
         super(BiInteractionPooling, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
         if K.ndim(inputs) != 3:
             raise ValueError(
-                "Unexpected inputs dimensions {given}, expected 3 dimensions"
-                    .format(given=K.ndim(inputs)))
+                "Unexpected inputs dimensions {given}, expected {expected} dimensions".format(
+                    given=K.ndim(inputs), expected=self.dimension))
 
-        dim = int(inputs.get_shape()[-1])
-        hidden_nn_layers = [inputs]
-        final_result = []
+        concated_embeds_value = inputs
+        square_of_sum = tf.square(
+            self.reduce_sum(concated_embeds_value, axis=1, keep_dims=True))
+        sum_of_square = self.reduce_sum(
+            concated_embeds_value * concated_embeds_value, axis=1, keep_dims=True)
+        cross_term = 0.5 * (square_of_sum - sum_of_square)
 
-        split_tensor0 = tf.split(hidden_nn_layers[0], dim * [1], 2)
-        for idx, layer_size in enumerate(self.layer_size):
-            split_tensor = tf.split(hidden_nn_layers[-1], dim * [1], 2)
+        return cross_term
 
-            dot_result_m = tf.matmul(
-                split_tensor0, split_tensor, transpose_b=True)
-
-            dot_result_o = tf.reshape(
-                dot_result_m, shape=[dim, -1, self.field_nums[0] * self.field_nums[idx]])
-
-            dot_result = tf.transpose(dot_result_o, perm=[1, 0, 2])
-
-            curr_out = tf.nn.conv1d(
-                dot_result, filters=self.filters[idx], stride=1, padding='VALID')
-
-            curr_out = tf.nn.bias_add(curr_out, self.bias[idx])
-
-            curr_out = self.activation_layers[idx](curr_out)
-
-            curr_out = tf.transpose(curr_out, perm=[0, 2, 1])
-
-            if self.split_half:
-                if idx != len(self.layer_size) - 1:
-                    next_hidden, direct_connect = tf.split(
-                        curr_out, 2 * [layer_size // 2], 1)
-                else:
-                    direct_connect = curr_out
-                    next_hidden = 0
-            else:
-                direct_connect = curr_out
-                next_hidden = curr_out
-
-            final_result.append(direct_connect)
-            hidden_nn_layers.append(next_hidden)
-
-        result = tf.concat(final_result, axis=1)
-        result = self.reduce_sum(result, -1, keep_dims=False)
-
-        return result
-
-    def compute_output_shape(self, input_shape):
-        pass
+    @staticmethod
+    def compute_output_shape(input_shape):
+        return None, 1, input_shape[-1]
 
     @staticmethod
     def reduce_sum(input_tensor,
