@@ -1,5 +1,6 @@
 from tensorflow import keras
 from sve.biInteraction import BiInteractionPooling
+from sve.sampling import Sampling
 
 
 class SVE(keras.Model):
@@ -20,7 +21,7 @@ class SVE(keras.Model):
         5) Sampling Layer
         :return:
         """
-        encoder: keras.Model = keras.Sequential()
+        encoder: keras.Model = keras.Sequential(name="Encoder")
         encoder.add(keras.Input(shape=(28, 28)))
         encoder.add(keras.layers.Embedding())
         encoder.add(BiInteractionPooling())
@@ -29,7 +30,7 @@ class SVE(keras.Model):
         x_mean = keras.layers.Dense(name="x_mean")
         x_var = keras.layers.Dense(name="x_var")
         encoder.add([x_mean, x_var])
-        encoder.add(keras.layers.Sampling())
+        encoder.add(Sampling())
 
         return encoder
 
@@ -39,7 +40,7 @@ class SVE(keras.Model):
         Generate the decoding FFNN.
         :return:
         """
-        decoder: keras.Model = keras.Sequential()
+        decoder: keras.Model = keras.Sequential(name="Decoder")
         return decoder
 
     def train_step(self, data):
@@ -49,6 +50,6 @@ class SVE(keras.Model):
         pass
 
     def __str__(self):
-        return "Encoder: {encoder}\nDecoder: \n{decoder}".format(
+        return "{encoder}\n{decoder}".format(
             encoder=self.encoder.summary(),
             decoder=self.decoder.summary())
