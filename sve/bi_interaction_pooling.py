@@ -2,9 +2,6 @@
 Bi-Interaction Layer from the paper Neural Factorization Machines
 for Sparse Predictive Analytics by He et al. (https://arxiv.org/pdf/1708.05027.pdf)
 Pooling operation to convert a set of embedding vectors to one vector.
-
-Reference:
- - https://deepctr-doc.readthedocs.io/en/latest/deepctr.layers.interaction.html#deepctr.layers.interaction.BiInteractionPooling
 """
 
 import tensorflow as tf
@@ -13,6 +10,10 @@ from tensorflow.keras import backend as K
 
 
 class BiInteractionPooling(keras.Layer):
+    """
+    Reference:
+    https://deepctr-doc.readthedocs.io/en/latest/deepctr.layers.interaction.html#deepctr.layers.interaction.BiInteractionPooling
+    """
 
     def __init__(self, dimension=3, **kwargs):
         super(BiInteractionPooling, self).__init__(**kwargs)
