@@ -8,8 +8,7 @@ class Sampling(keras.Layer):
     mean and the log of the variance of the latent space distribution.
     """
 
-    @staticmethod
-    def call(inputs):
+    def __call__(self, inputs):
         z_mean, z_log_var = inputs
         batch = tf.shape(z_mean)[0]
         dim = tf.shape(z_mean)[1]
