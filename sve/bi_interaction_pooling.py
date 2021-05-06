@@ -5,11 +5,11 @@ Pooling operation to convert a set of embedding vectors to one vector.
 """
 
 import tensorflow as tf
-from tensorflow import keras
+from tensorflow.keras import layers
 from tensorflow.keras import backend as K
 
 
-class BiInteractionPooling(keras.Layer):
+class BiInteractionPooling(layers.Layer):
     """
     Reference:
     https://deepctr-doc.readthedocs.io/en/latest/deepctr.layers.interaction.html#deepctr.layers.interaction.BiInteractionPooling
@@ -42,6 +42,5 @@ class BiInteractionPooling(keras.Layer):
 
         return cross_term
 
-    @staticmethod
-    def compute_output_shape(input_shape):
+    def compute_output_shape(self, input_shape):
         return None, 1, input_shape[-1]

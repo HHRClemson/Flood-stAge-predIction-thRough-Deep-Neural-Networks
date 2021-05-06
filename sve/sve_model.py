@@ -58,7 +58,7 @@ class SVE(keras.Model):
         """
         decoder: keras.Model = keras.Sequential(name="Decoder")
         decoder.add(keras.Input(shape=(latent_dim,)))
-        decoder.add(keras.layers.LSTM())
+        decoder.add(keras.layers.LSTM(return_sequence=True))
 
         return decoder
 
