@@ -1,25 +1,28 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow import keras
+
 from sve.sve_model import SVE
 
 
 def train_mnist() -> keras.Model:
     # Train the SVE on the classical MNIST dataset
     (x_train, _), (x_test, _) = keras.datasets.mnist.load_data()
-    x_train = x_train.astype('float32') / 255.
-    x_test = x_test.astype('float32') / 255.
     x_train = x_train.reshape((len(x_train), np.prod(x_train.shape[1:])))
     x_test = x_test.reshape((len(x_test), np.prod(x_test.shape[1:])))
 
+    mnist_digits = np.concatenate([x_train, x_test], axis=0)
+    mnist_digits = mnist_digits.astype("float32") / 255
+
+    print(x_train.shape, x_test.shape, mnist_digits.shape)
+
     sve = SVE()
+    sve.summary()
     sve.compile(optimizer=keras.optimizers.Adam())
     sve.fit(
-        x_train, x_train,
+        mnist_digits,
         epochs=30,
-        batch_size=256,
-        shuffle=True,
-        validataion_data=(x_test, x_test)
+        batch_size=128,
     )
 
     return sve
@@ -42,8 +45,8 @@ def plot_latent_space(sve, n=30, figsize=15):
             x_decoded = sve.decoder.predict(z_sample)
             digit = x_decoded[0].reshape(digit_size, digit_size)
             figure[
-            i * digit_size: (i + 1) * digit_size,
-            j * digit_size: (j + 1) * digit_size,
+                i * digit_size: (i + 1) * digit_size,
+                j * digit_size: (j + 1) * digit_size,
             ] = digit
 
     plt.figure(figsize=(figsize, figsize))
@@ -63,4 +66,6 @@ def plot_latent_space(sve, n=30, figsize=15):
 if __name__ == "__main__":
     print("Start training the SVE...")
     trained_sve: keras.Model = train_mnist()
+    print(trained_sve)
+
     plot_latent_space(trained_sve)
