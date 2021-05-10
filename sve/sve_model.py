@@ -8,7 +8,7 @@ from sve.sampling_layer import Sampling
 
 class SVE(keras.Model):
 
-    def __init__(self, latent_dim=5, **kwargs):
+    def __init__(self, latent_dim=2, **kwargs):
         super(SVE, self).__init__(**kwargs)
         self.encoder: keras.Model = self._build_encoder(latent_dim)
         self.decoder: keras.Model = self._build_decoder(latent_dim)
@@ -55,7 +55,7 @@ class SVE(keras.Model):
         """
         """
         decoder_inputs = keras.Input(shape=(latent_dim,))
-        curr = keras.layers.LSTM(units=32, return_sequences=True)(decoder_inputs)
+        curr = keras.layers.LSTM(units=784, return_sequences=True)(decoder_inputs)
 
         return keras.Model(decoder_inputs, curr, name="decoder")
         """
@@ -67,18 +67,13 @@ class SVE(keras.Model):
         with tf.GradientTape() as tape:
             z_mean, z_log_var, z = self.encoder(data)
             reconstruction = self.decoder(z)
-            print("encoded:", z_mean, z_log_var, z)
+            print("Encoded:", z_mean, z_log_var, z)
             print("Decoded:", reconstruction)
             print("Input shape:", data.shape, "Reconstruction shape:", reconstruction.shape)
 
-            reconstruction_loss = tf.reduce_mean(
-                tf.reduce_sum(
-                    keras.losses.binary_crossentropy(data, reconstruction)
-                )
-            )
-            kl_loss = -0.5 * (1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var))
-            kl_loss = tf.reduce_mean(tf.reduce_sum(kl_loss, axis=1))
-            total_loss = reconstruction_loss + kl_loss
+            reconstruction_loss = tf.reduce_sum(tf.math.squared_difference(reconstruction, data))
+            kl_loss = -0.5 * tf.reduce_sum(1 + z_log_var + tf.square(z_mean) - tf.exp(z_log_var))
+            total_loss = tf.reduce_mean(reconstruction_loss + kl_loss)
 
         grads = tape.gradient(total_loss, self.trainable_weights)
         self.optimizer.apply_gradients(zip(grads, self.trainable_weights))

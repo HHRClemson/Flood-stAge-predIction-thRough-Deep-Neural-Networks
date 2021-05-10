@@ -21,7 +21,7 @@ def train_mnist() -> keras.Model:
     sve.compile(optimizer=keras.optimizers.Adam())
     sve.fit(
         mnist_digits,
-        epochs=30,
+        epochs=10,
         batch_size=128,
     )
 
@@ -64,8 +64,6 @@ def plot_latent_space(sve, n=30, figsize=15):
 
 
 if __name__ == "__main__":
-    print("Start training the SVE...")
     trained_sve: keras.Model = train_mnist()
-    print(trained_sve)
 
     plot_latent_space(trained_sve)

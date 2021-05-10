@@ -1,6 +1,6 @@
 """
 Bi-Interaction Pooling Layer from the paper Neural Factorization Machines
-for Sparse Predictive Analytics by He et al. (https://arxiv.org/pdf/1708.05027.pdf)
+for Sparse Predictive Analytics by He et al. (https://arxiv.org/abs/1708.05027)
 Pooling operation to convert a set of embedding vectors to one vector.
 """
 
