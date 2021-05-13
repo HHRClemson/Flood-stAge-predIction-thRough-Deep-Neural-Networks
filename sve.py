@@ -8,21 +8,19 @@ from sve.sve_model import SVE
 def train_mnist() -> keras.Model:
     # Train the SVE on the classical MNIST dataset
     (x_train, _), (x_test, _) = keras.datasets.mnist.load_data()
+
+    x_train = x_train.astype('float32') / 255.
+    x_test = x_test.astype('float32') / 255.
     x_train = x_train.reshape((len(x_train), np.prod(x_train.shape[1:])))
     x_test = x_test.reshape((len(x_test), np.prod(x_test.shape[1:])))
-
-    mnist_digits = np.concatenate([x_train, x_test], axis=0)
-    mnist_digits = mnist_digits.astype("float32") / 255
-
-    print(x_train.shape, x_test.shape, mnist_digits.shape)
 
     sve = SVE()
     sve.summary()
     sve.compile(optimizer=keras.optimizers.Adam())
     sve.fit(
-        mnist_digits,
-        epochs=10,
-        batch_size=128,
+        x_train,
+        epochs=100,
+        batch_size=128
     )
 
     return sve
