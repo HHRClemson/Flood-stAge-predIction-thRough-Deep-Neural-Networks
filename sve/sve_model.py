@@ -35,10 +35,10 @@ class SVE(keras.Model):
         4) Normal dense (hidden) Layer
         5) Sampling Layer with the mean and the log var of the latent space distribution
         """
-        inputs = keras.Input(shape=(784,))
-        x = keras.layers.Embedding(input_dim=784, output_dim=64)(inputs)
-        x = BiInteractionPooling()(x)
-        x = keras.layers.Dense(64, activation="relu")(x)
+        inputs = keras.Input(shape=(28 * 28,))
+        #x = keras.layers.Embedding(input_dim=784, output_dim=64)(inputs)
+        #x = BiInteractionPooling()(x)
+        x = keras.layers.Dense(64, activation="relu")(inputs)
         z_mean = keras.layers.Dense(latent_dim, name="z_mean")(x)
         z_log_var = keras.layers.Dense(latent_dim, name="z_log_var")(x)
         z = Sampling()([z_mean, z_log_var])
@@ -60,20 +60,20 @@ class SVE(keras.Model):
         with tf.GradientTape() as tape:
             z_mean, z_log_var, z = self.encoder(data)
             reconstruction = self.decoder(z)
-            print("Encoded:", z_mean, z_log_var, z)
-            print("Decoded:", reconstruction)
-            print("Input shape:", data.shape, "Reconstruction shape:", reconstruction.shape)
 
             reconstruction_loss = tf.reduce_mean(tf.reduce_sum(
                 keras.losses.binary_crossentropy(data, reconstruction)))
             kl_loss = -0.5 * tf.reduce_sum(1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var))
-            total_loss = tf.reduce_mean(reconstruction_loss + kl_loss)
+            kl_loss = tf.reduce_mean(tf.reduce_sum(kl_loss))
+
+            total_loss = reconstruction_loss + kl_loss
 
         grads = tape.gradient(total_loss, self.trainable_weights)
         self.optimizer.apply_gradients(zip(grads, self.trainable_weights))
-        self.total_loss_tracker.update_state(total_loss)
+
         self.reconstruction_loss_tracker.update_state(reconstruction_loss)
         self.kl_loss_tracker.update_state(kl_loss)
+        self.total_loss_tracker.update_state(total_loss)
 
         return {
             "total_loss": self.total_loss_tracker.result(),

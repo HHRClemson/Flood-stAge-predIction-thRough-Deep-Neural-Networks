@@ -19,7 +19,7 @@ def train_mnist() -> keras.Model:
     sve.compile(optimizer=keras.optimizers.Adam())
     sve.fit(
         x_train,
-        epochs=100,
+        epochs=30,
         batch_size=128
     )
 
