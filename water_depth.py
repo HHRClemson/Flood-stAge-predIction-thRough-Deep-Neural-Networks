@@ -1,73 +1,43 @@
 import os
 import numpy as np
 import pandas as pd
+import cv2
 
 import tensorflow as tf
 from tensorflow.keras import models, Model, layers
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 import matplotlib.pyplot as plt
 
 
-def append_ext(fn):
-    """Append the extensions to the .csv labels"""
-    return fn + ".png"
+def load_dataset(path):
+    x_train, y_train = [], []
+    x_val, y_val = [], []
 
+    heights = dict(pd.read_csv(path + "labels.csv").to_numpy())
 
-def load_dataset():
-    dataset_path = "./datasets/RockyCreek/"
+    files = os.listdir(path)
 
-    traindf = pd.read_csv(dataset_path + "labels.csv", dtype=str, sep=", ")
-    print(traindf)
-    testdf = pd.read_csv(dataset_path + "labels.csv", dtype=str, sep=", ")
+    for i, file in enumerate(files):
+        if file == "labels.csv":
+            continue
+        img = cv2.imread(path + file).astype(np.float32)
 
-    traindf["time"] = traindf["time"].apply(append_ext)
-    testdf["time"] = testdf["time"].apply(append_ext)
+        # remove extension from image
+        key = file[:-4]
 
-    datagen = ImageDataGenerator(rescale=1. / 255., validation_split=0.2)
-
-    train_generator = datagen.flow_from_dataframe(
-        dataframe=traindf,
-        directory=dataset_path,
-        x_col="time",
-        y_col="height",
-        subset="training",
-        batch_size=32,
-        shuffle=True,
-        class_mode="sparse",
-        target_size=(800, 450, 3)
-    )
-
-    valid_generator = datagen.flow_from_dataframe(
-        dataframe=traindf,
-        directory=dataset_path,
-        x_col="time",
-        y_col="height",
-        subset="validation",
-        batch_size=32,
-        shuffle=True,
-        class_mode="sparse",
-        target_size=(800, 450, 3)
-    )
-
-    test_datagen = ImageDataGenerator(rescale=1. / 255.)
-    test_generator = test_datagen.flow_from_dataframe(
-        dataframe=testdf,
-        directory=dataset_path,
-        x_col="time",
-        y_col="height",
-        batch_size=32,
-        shuffle=False,
-        class_mode=None,
-        target_size=(800, 450, 3)
-    )
-
-    return train_generator, valid_generator, test_generator
+        # validation set is around 20%
+        if i % 5 == 0:
+            x_val.append(img)
+            y_val.append(np.float32(heights[key]))
+        else:
+            x_train.append(img)
+            y_train.append(np.float32(heights[key]))
+    return np.asarray(x_train), np.asarray(y_train), np.asarray(x_val), np.asarray(y_val)
 
 
 def create_model() -> Model:
     cnn = models.Sequential()
-    cnn.add(layers.Conv2D(32, 3, 3, activation="relu", input_shape=(800, 450, 3)))
+    cnn.add(layers.Conv2D(32, 3, 3, activation="relu", input_shape=(450, 800, 3)))
     cnn.add(layers.MaxPool2D((2, 2)))
     cnn.add(layers.Conv2D(64, 3, 3, activation="relu"))
     cnn.add(layers.MaxPooling2D(2, 2))
@@ -75,12 +45,11 @@ def create_model() -> Model:
 
     cnn.add(layers.Flatten())
     cnn.add(layers.Dense(64, activation="relu"))
-    cnn.add(layers.Dense(10))
+    cnn.add(layers.Dense(10, activation="linear"))
 
     cnn.compile(
         optimizer="adam",
-        loss=tf.keras.losses.MeanSquaredError,
-        metrics=["accuracy"]
+        loss=tf.keras.losses.MeanSquaredError()
     )
 
     return cnn
@@ -91,21 +60,15 @@ def plot_model(history):
 
 
 if __name__ == "__main__":
-    train_gen, valid_gen, test_gen = load_dataset()
+    x_train, y_train, x_val, y_val = load_dataset("./datasets/RockyCreek/")
 
     model: Model = create_model()
     model.summary()
 
-    STEP_SIZE_TRAIN = train_gen.n // train_gen.batch_size
-    STEP_SIZE_VALID = valid_gen.n // valid_gen.batch_size
-    STEP_SIZE_TEST = test_gen.n // test_gen.batch_size
-
-    history = model.fit_generator(
-        generator=train_gen,
-        steps_per_epoch=STEP_SIZE_TRAIN,
-        validation_data=valid_gen,
-        validation_steps=STEP_SIZE_VALID,
-        epochs=10
+    history = model.fit(
+        x_train, y_train,
+        epochs=10,
+        validation_data=(x_val, y_val)
     )
 
     plot_model(history)
