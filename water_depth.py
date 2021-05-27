@@ -66,8 +66,8 @@ def create_model() -> Model:
     cnn.add(layers.Conv2D(64, 3, 3, activation="relu"))
 
     cnn.add(layers.Flatten())
+    cnn.add(layers.Dense(128, activation="relu"))
     cnn.add(layers.Dense(64, activation="relu"))
-    cnn.add(layers.Dense(10, activation="relu"))
     cnn.add(layers.Dense(1, activation="linear"))
 
     cnn.compile(
@@ -79,7 +79,12 @@ def create_model() -> Model:
 
 
 def plot_model(history):
-    pass
+    plt.plot(history.history['loss'], label='loss')
+    plt.plot(history.history['val_loss'], label='val_loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend(['train', 'val'], loc='upper left')
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -94,12 +99,11 @@ if __name__ == "__main__":
         validation_data=(x_val, y_val)
     )
 
-    plot_model(history)
-
     predictions_val = model.predict(x_val)
-
     compare = pd.DataFrame(data={
         "original": y_val.reshape((len(y_val),)),
         "predictions": predictions_val.reshape((len(predictions_val),))
     })
     print(compare)
+
+    plot_model(history)
