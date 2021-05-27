@@ -9,6 +9,27 @@ from tensorflow.keras import models, Model, layers
 import matplotlib.pyplot as plt
 
 
+def get_csv_key_from_file(filename):
+    """
+    The labels exist only for every :15 minutes, we store a picture every 5 minutes.
+    Thus we round to the nearest :15 minutes to get the closest ground truth for the current image
+    """
+    # remove .png extension
+    filename = filename[:-4]
+
+    date, time = filename.split("_")
+    hour, minutes = time.split(":")
+
+    next_quarter = 15 * round(int(minutes) / 15)
+    next_quarter = str("0" + str(next_quarter) if next_quarter < 10 else next_quarter)
+
+    if next_quarter == "60":
+        hour = str(int(hour) + 1)
+        next_quarter = "00"
+
+    return "{d}_{h}:{m}".format(d=date, h=hour, m=next_quarter)
+
+
 def load_dataset(path):
     x_train, y_train = [], []
     x_val, y_val = [], []
@@ -20,10 +41,11 @@ def load_dataset(path):
     for i, file in enumerate(files):
         if file == "labels.csv":
             continue
+
         img = cv2.imread(path + file).astype(np.float32)
 
         # remove extension from image
-        key = file[:-4]
+        key = get_csv_key_from_file(file)
 
         # validation set is around 20%
         if i % 5 == 0:
@@ -45,7 +67,8 @@ def create_model() -> Model:
 
     cnn.add(layers.Flatten())
     cnn.add(layers.Dense(64, activation="relu"))
-    cnn.add(layers.Dense(10, activation="linear"))
+    cnn.add(layers.Dense(10, activation="relu"))
+    cnn.add(layers.Dense(1, activation="linear"))
 
     cnn.compile(
         optimizer="adam",
@@ -67,8 +90,16 @@ if __name__ == "__main__":
 
     history = model.fit(
         x_train, y_train,
-        epochs=10,
+        epochs=30,
         validation_data=(x_val, y_val)
     )
 
     plot_model(history)
+
+    predictions_val = model.predict(x_val)
+
+    compare = pd.DataFrame(data={
+        "original": y_val.reshape((len(y_val),)),
+        "predictions": predictions_val.reshape((len(predictions_val),))
+    })
+    print(compare)
