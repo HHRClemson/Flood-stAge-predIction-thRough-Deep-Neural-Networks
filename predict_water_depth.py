@@ -21,7 +21,7 @@ def _get_csv_key_from_file(filename):
     hour, minutes = time.split(":")
 
     next_quarter = 15 * round(int(minutes) / 15)
-    next_quarter = str("0" + str(next_quarter) if next_quarter < 10 else next_quarter)
+    next_quarter = "0" + str(next_quarter) if next_quarter < 10 else str(next_quarter)
 
     if next_quarter == "60":
         hour = str(int(hour) + 1)
