@@ -16,7 +16,10 @@ def _get_csv_key_from_file(filename):
     """
     # remove .png extension
     filename = filename[:-4]
-
+    # remove filename prefix
+    #print(filename)
+    filename = filename.split("-", 1)[1]
+    #print(filename)
     date, time = filename.split("_")
     hour, minutes = time.split(":")
 
@@ -59,7 +62,7 @@ def _load_dataset(path):
 
 def _create_model() -> Model:
     cnn = models.Sequential()
-    cnn.add(layers.Conv2D(32, 3, 3, activation="relu", input_shape=(450, 800, 3)))
+    cnn.add(layers.Conv2D(32, 3, 3, activation="relu", input_shape=(720, 1280, 3)))
     cnn.add(layers.MaxPool2D((2, 2)))
     cnn.add(layers.Conv2D(64, 3, 3, activation="relu"))
     cnn.add(layers.MaxPooling2D(2, 2))
@@ -88,7 +91,8 @@ def _plot_model(history):
 
 
 def train_and_predict():
-    x_train, y_train, x_val, y_val = _load_dataset("./datasets/RockyCreek/")
+    x_train, y_train, x_val, y_val = _load_dataset("./datasets/new_data/Shamrock/")
+    #x_train, y_train, x_val, y_val = _load_dataset("./datasets/RockyCreek/")
 
     model: Model = _create_model()
     model.summary()

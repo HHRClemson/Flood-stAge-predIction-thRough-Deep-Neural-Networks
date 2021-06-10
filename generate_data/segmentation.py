@@ -38,14 +38,15 @@ class WaterDataset(Dataset):
             row = regions[region]["shape_attributes"]
             labels.append((row["all_points_x"], row["all_points_y"]))
 
-        mask = self._get_mask(labels, img.shape[:2]) / 255
+        mask = self._get_mask(labels, img.shape[1:]) / 255
+        mask = mask.transpose((2, 0, 1))
 
-        if img.shape[:2] != (720, 1280):
+        if img.shape[1:] != (720, 1280):
             #img = cv2.resize(img, (720, 1280))
             #mask = cv2.resize(mask, (720, 1280))
             return self[(idx + 1) % len(self)]
 
-        return img, mask
+        return img.astype(np.float32), mask.astype(np.float32)
 
     @staticmethod
     def _get_mask(labels, shape):
@@ -79,8 +80,8 @@ def visualize(**images):
 
 
 if __name__ == "__main__":
-    data_path = "../datasets/segmentation/"
-    dataset = WaterDataset(data_path)
+    dataset_path = "../datasets/segmentation/"
+    dataset = WaterDataset(dataset_path)
 
     model = _create_model()
 
