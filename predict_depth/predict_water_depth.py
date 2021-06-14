@@ -4,9 +4,12 @@ import pandas as pd
 import cv2
 
 import tensorflow as tf
-from tensorflow.keras import models, Model, layers
+from tensorflow.keras import Model
 
 import matplotlib.pyplot as plt
+
+import predict_depth.cnn as cnn
+import predict_depth.bcnn as bcnn
 
 
 def _get_csv_key_from_file(filename):
@@ -17,9 +20,8 @@ def _get_csv_key_from_file(filename):
     # remove .png extension
     filename = filename[:-4]
     # remove filename prefix
-    #print(filename)
     filename = filename.split("-", 1)[1]
-    #print(filename)
+
     date, time = filename.split("_")
     hour, minutes = time.split(":")
 
@@ -60,27 +62,6 @@ def _load_dataset(path):
     return np.asarray(x_train), np.asarray(y_train), np.asarray(x_val), np.asarray(y_val)
 
 
-def _create_model() -> Model:
-    cnn = models.Sequential()
-    cnn.add(layers.Conv2D(32, 3, 3, activation="relu", input_shape=(720, 1280, 3)))
-    cnn.add(layers.MaxPool2D((2, 2)))
-    cnn.add(layers.Conv2D(64, 3, 3, activation="relu"))
-    cnn.add(layers.MaxPooling2D(2, 2))
-    cnn.add(layers.Conv2D(64, 3, 3, activation="relu"))
-
-    cnn.add(layers.Flatten())
-    cnn.add(layers.Dense(128, activation="relu"))
-    cnn.add(layers.Dense(64, activation="relu"))
-    cnn.add(layers.Dense(1, activation="linear"))
-
-    cnn.compile(
-        optimizer="adam",
-        loss=tf.keras.losses.MeanSquaredError()
-    )
-
-    return cnn
-
-
 def _plot_model(history):
     plt.plot(history.history["loss"], label="loss")
     plt.plot(history.history["val_loss"], label="val_loss")
@@ -90,11 +71,14 @@ def _plot_model(history):
     plt.show()
 
 
-def train_and_predict():
-    x_train, y_train, x_val, y_val = _load_dataset("./datasets/new_data/Shamrock/")
-    #x_train, y_train, x_val, y_val = _load_dataset("./datasets/RockyCreek/")
+def train_and_predict(bayesian=False):
+    #x_train, y_train, x_val, y_val = _load_dataset("./datasets/new_data/Shamrock/")
+    x_train, y_train, x_val, y_val = _load_dataset("./datasets/RockyCreek/")
 
-    model: Model = _create_model()
+    if bayesian:
+        model: Model = bcnn.create_bcnn_model(len(y_train))
+    else:
+        model: Model = cnn.create_cnn_model()
     model.summary()
 
     callback = tf.keras.callbacks.EarlyStopping(monitor="loss", patience=10)
@@ -105,11 +89,31 @@ def train_and_predict():
         callbacks=[callback]
     )
 
-    predictions_val = model.predict(x_val)
+    val_set_size = len(y_val)
+    predictions = model.predict(x_val)
+
+    if bayesian:
+        prediction_mean = np.mean(predictions, axis=1)
+        prediction_min = np.min(predictions, axis=1)
+        prediction_max = np.max(predictions, axis=1)
+        prediction_range = np.max(predictions, axis=1) - np.min(predictions, axis=1)
+    else:
+        prediction_mean = np.repeat(np.NaN, val_set_size, axis=0)
+        prediction_min = np.repeat(np.NaN, val_set_size, axis=0)
+        prediction_max = np.repeat(np.NaN, val_set_size, axis=0)
+        prediction_range = np.repeat(np.NaN, val_set_size, axis=0)
+
     compare = pd.DataFrame(data={
-        "original": y_val.reshape((len(y_val),)),
-        "predictions": predictions_val.reshape((len(predictions_val),))
+        "original": y_val.reshape((val_set_size,)),
+        "predictions": predictions.reshape((val_set_size,)),
+        "mean": prediction_mean.reshape((val_set_size,)),
+        "min": prediction_min.reshape((val_set_size,)),
+        "max": prediction_max.reshape((val_set_size,)),
+        "range": prediction_range.reshape((val_set_size,)),
     })
     print(compare)
+
+    avg_error = sum([abs(pred - truth) for pred, truth in zip(predictions, y_val)]) / val_set_size
+    print("Avg error: ", avg_error)
 
     _plot_model(history)
