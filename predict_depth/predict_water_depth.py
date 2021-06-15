@@ -71,14 +71,13 @@ def _plot_model(history):
     plt.show()
 
 
-def train_and_predict(bayesian=False):
-    #x_train, y_train, x_val, y_val = _load_dataset("./datasets/new_data/Shamrock/")
-    x_train, y_train, x_val, y_val = _load_dataset("./datasets/RockyCreek/")
+def train_and_predict(dataset_path, bayesian=False):
+    x_train, y_train, x_val, y_val = _load_dataset(dataset_path)
 
     if bayesian:
-        model: Model = bcnn.create_bcnn_model(len(y_train))
+        model: Model = bcnn.create_bcnn_model(len(y_train), x_train[0].shape)
     else:
-        model: Model = cnn.create_cnn_model()
+        model: Model = cnn.create_cnn_model(x_train[0].shape)
     model.summary()
 
     callback = tf.keras.callbacks.EarlyStopping(monitor="loss", patience=10)

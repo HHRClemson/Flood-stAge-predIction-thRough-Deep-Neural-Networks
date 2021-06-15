@@ -5,51 +5,15 @@ import tensorflow_probability as tfp
 
 # Create a bayesian CNN to predict a range and a mean on a standard distribution
 # for a regression task
-def create_bcnn_model_convolutionFlipout(train_size) -> Model:
-    inputs = layers.Input(shape=(450, 800, 3))
-    x = tfp.layers.Convolution2DFlipout(32, kernel_size=(3, 3), padding="same", strides=2)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation("relu")(x)
-    x = tfp.layers.Convolution2DFlipout(64, kernel_size=(3, 3), padding="same", strides=2, activation="relu")(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation("relu")(x)
-    x = tfp.layers.Convolution2DFlipout(64, kernel_size=(3, 3), padding="same", strides=2, activation="relu")(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation("relu")(x)
-
-    x = layers.Flatten()(x)
-
-    hidden_units = [128, 64]
-    for units in hidden_units:
-        x = tfp.layers.DenseVariational(
-            units=units,
-            make_prior_fn=prior,
-            make_posterior_fn=posterior,
-            kl_weight=1 / train_size,
-            activation="sigmoid",
-        )(x)
-
-    outputs = layers.Dense(1, activation="linear")(x)
-    bcnn = tf.keras.Model(inputs=inputs, outputs=outputs)
-
-    bcnn.compile(
-        optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.0005),
-        loss=tf.keras.losses.MeanSquaredError(),
-        metrics=[tf.keras.metrics.RootMeanSquaredError()]
-    )
-
-    return bcnn
-
-
-def create_bcnn_model(train_size) -> Model:
+def create_bcnn_model(train_size, img_shapes) -> Model:
     bcnn = models.Sequential()
-    bcnn.add(layers.Conv2D(32, 3, 3, activation="relu", input_shape=(450, 800, 3)))
+    bcnn.add(layers.Conv2D(32, 3, 3, activation="relu", input_shape=img_shapes))
     bcnn.add(layers.MaxPool2D((2, 2)))
     bcnn.add(layers.Conv2D(64, 3, 3, activation="relu"))
     bcnn.add(layers.MaxPooling2D(2, 2))
     bcnn.add(layers.Conv2D(64, 3, 3, activation="relu"))
 
-    bcnn.add(layers.Flatten())
+    bcnn.add(layers.GlobalMaxPooling2D())
 
     hidden_units = [128, 64]
     for units in hidden_units:
@@ -75,7 +39,7 @@ def create_bcnn_model(train_size) -> Model:
 # Define the prior weight distribution as Normal of mean=0 and stddev=1.
 # Note that, in this example, the we prior distribution is not trainable,
 # as we fix its parameters.
-def prior(kernel_size, bias_size, dtype=None):
+def prior(kernel_size, bias_size):
     n = kernel_size + bias_size
     prior_model = tf.keras.Sequential(
         [
