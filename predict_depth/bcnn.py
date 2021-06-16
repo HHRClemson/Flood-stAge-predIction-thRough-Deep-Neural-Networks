@@ -39,7 +39,7 @@ def create_bcnn_model(train_size, img_shapes) -> Model:
 # Define the prior weight distribution as Normal of mean=0 and stddev=1.
 # Note that, in this example, the we prior distribution is not trainable,
 # as we fix its parameters.
-def prior(kernel_size, bias_size):
+def prior(kernel_size, bias_size, dtype=None):
     n = kernel_size + bias_size
     prior_model = tf.keras.Sequential(
         [
