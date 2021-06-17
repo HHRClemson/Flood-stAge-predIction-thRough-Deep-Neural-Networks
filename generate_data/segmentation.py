@@ -1,6 +1,7 @@
 import numpy as np
 import json
 import cv2
+import os
 
 import tensorflow as tf
 from tensorflow.keras import layers, Model, metrics
@@ -52,6 +53,37 @@ def _load_dataset(path, img_width, img_height):
     return np.asarray(x_train), np.asarray(y_train), np.asarray(x_val), np.asarray(y_val)
 
 
+def _load_kaggle_dataset(path, img_width, img_height):
+    """
+    Train on the Kaggle Water Segmentation dataset:
+    https://www.kaggle.com/gvclsu/water-segmentation-dataset
+    """
+    training_path = path + "images/"
+    truth_path = path + "truth/"
+    dirs = os.listdir(path + "truth")
+
+    x_train = []
+    y_train = []
+
+    for dir in dirs:
+        training_dir = training_path + dir + "/"
+        truth_dir = truth_path + dir + "/"
+
+        for img_name in os.listdir(training_dir):
+            img_path = training_dir + img_name
+            img = cv2.imread(img_path)
+            x_train.append(tf.cast(
+                tf.image.resize_with_pad(img, img_width, img_height), np.uint8) / 255)
+
+        for img_name in os.listdir(truth_dir):
+            img_path = truth_dir + img_name
+            img = cv2.imread(img_path)
+            y_train.append(tf.cast(
+                tf.image.resize_with_pad(img, img_width, img_height), np.uint8) / 255)
+
+    return np.asarray(x_train), np.asarray(y_train)
+
+
 def create_model(img_width, img_height) -> Model:
     inputs = layers.Input(shape=(img_width, img_height, 3), name="input_image")
 
@@ -61,7 +93,7 @@ def create_model(img_width, img_height) -> Model:
     skip_connection_names = ["input_image", "block_1_expand_relu", "block_3_expand_relu", "block_6_expand_relu"]
     encoder_output = encoder.get_layer("block_13_expand_relu").output
 
-    f = [16, 32, 48, 64]
+    f = [16, 32, 48, 64, 128]
     x = encoder_output
     for i in range(1, len(skip_connection_names) + 1, 1):
         x_skip = encoder.get_layer(skip_connection_names[-i]).output
@@ -100,40 +132,44 @@ def dice_loss(y_true, y_pred):
     return 1.0 - dice_coef(y_true, y_pred)
 
 
-def display(images):
-    n = len(images)
-    fig = plt.figure(figsize=(16, 9))
-    for i, image in enumerate(images):
-        fig.add_subplot(n, 1, i + 1)
-        plt.imshow(image)
+def display(images, name=None):
+    fig = plt.figure()
+    columns = len(images[0])
+    rows = len(images)
+
+    curr_img = 1
+    for data in images:
+        for img in data:
+            fig.add_subplot(rows, columns, curr_img)
+            plt.imshow(img)
+            curr_img += 1
+            plt.axis("off")
+    if name is not None:
+        plt.savefig(name, format="svg", dpi=1200)
     plt.show()
-    plt.savefig("segmentation_result.png")
 
 
 if __name__ == "__main__":
-    img_width = 256
-    img_height = 256
+    img_width = 512
+    img_height = 512
     x_train, y_train, x_val, y_val = _load_dataset("../datasets/segmentation/",
                                                    img_width, img_height)
+    x_train, y_train = _load_kaggle_dataset("../datasets/kaggle/", img_width, img_height)
+    display([[x_train[0], y_train[0]]], name="test-pics.svg")
 
     model: Model = create_model(img_width, img_height)
     model.summary()
 
     history = model.fit(
         x_train, y_train,
-        epochs=30,
-        validation_data=(x_val, y_val)
+        epochs=1,
+        #validation_data=(x_val, y_val)
     )
 
     predictions = model.predict(x_val)
 
-    imgs = []
+    results = []
     for i in range(len(x_val)):
-        x = x_val[i]
-        y = cv2.cvtColor(y_val[i], cv2.COLOR_GRAY2RGB)
-        y_hat = cv2.cvtColor(predictions[i], cv2.COLOR_GRAY2RGB)
-
-        image = np.concatenate([x, y, y_hat], axis=0)
-        imgs.append(image)
-    display(imgs)
+        results.append([x_val[i], y_val[i], predictions[i]])
+    #display(results)
 
