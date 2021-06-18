@@ -38,17 +38,16 @@ def _load_dataset(path, img_width, img_height):
 
         mask = _get_mask(labels, img.shape[:2])
 
+        img = tf.cast(tf.image.resize_with_pad(img, img_width, img_height), np.uint8) / 255
+        mask = tf.cast(tf.image.resize_with_pad(mask, img_width, img_height), np.uint8) / 255
+
         # the size of the validation set is 20% of the original dataset
         if i % 5 == 0:
-            x_val.append(tf.cast(
-                tf.image.resize_with_pad(img, img_width, img_height), np.uint8) / 255)
-            y_val.append(tf.cast(
-                tf.image.resize_with_pad(mask, img_width, img_height), np.uint8) / 255)
+            x_val.append(img)
+            y_val.append(mask)
         else:
-            x_train.append(tf.cast(
-                tf.image.resize_with_pad(img, img_width, img_height), np.uint8) / 255)
-            y_train.append(tf.cast(
-                tf.image.resize_with_pad(mask, img_width, img_height), np.uint8) / 255)
+            x_train.append(img)
+            y_train.append(mask)
 
     return np.asarray(x_train), np.asarray(y_train), np.asarray(x_val), np.asarray(y_val)
 
@@ -58,30 +57,40 @@ def _load_kaggle_dataset(path, img_width, img_height):
     Train on the Kaggle Water Segmentation dataset:
     https://www.kaggle.com/gvclsu/water-segmentation-dataset
     """
-    training_path = path + "images/"
+    images_path = path + "images/"
     truth_path = path + "truth/"
     dirs = os.listdir(path + "truth")
 
-    x_train = []
-    y_train = []
+    x_train, y_train = [], []
+    x_val, y_val = [], []
 
     for dir in dirs:
-        training_dir = training_path + dir + "/"
+        print("CURR DIR: ", dir)
+        images_dir = images_path + dir + "/"
         truth_dir = truth_path + dir + "/"
 
-        for img_name in os.listdir(training_dir):
-            img_path = training_dir + img_name
+        for img_name in sorted(os.listdir(images_dir)):
+            img_path = images_dir + img_name
             img = cv2.imread(img_path)
-            x_train.append(tf.cast(
-                tf.image.resize_with_pad(img, img_width, img_height), np.uint8) / 255)
+            img = tf.cast(tf.image.resize_with_pad(img, img_width, img_height), np.uint8) / 255
 
-        for img_name in os.listdir(truth_dir):
+            if "_val_" in img_path:
+                x_val.append(img)
+            else:
+                x_train.append(img)
+
+        for img_name in sorted(os.listdir(truth_dir)):
             img_path = truth_dir + img_name
-            img = cv2.imread(img_path)
-            y_train.append(tf.cast(
-                tf.image.resize_with_pad(img, img_width, img_height), np.uint8) / 255)
+            mask = cv2.imread(img_path)
+            mask = tf.cast(tf.image.resize_with_pad(mask, img_width, img_height), np.uint8) / 255
+            mask = tf.image.rgb_to_grayscale(mask)
 
-    return np.asarray(x_train), np.asarray(y_train)
+            if "_val_" in img_path:
+                y_val.append(mask)
+            else:
+                y_train.append(mask)
+
+    return np.asarray(x_train), np.asarray(y_train), np.asarray(x_val), np.asarray(y_val)
 
 
 def create_model(img_width, img_height) -> Model:
@@ -144,6 +153,7 @@ def display(images, name=None):
             plt.imshow(img)
             curr_img += 1
             plt.axis("off")
+
     if name is not None:
         plt.savefig(name, format="svg", dpi=1200)
     plt.show()
@@ -152,10 +162,11 @@ def display(images, name=None):
 if __name__ == "__main__":
     img_width = 512
     img_height = 512
-    x_train, y_train, x_val, y_val = _load_dataset("../datasets/segmentation/",
-                                                   img_width, img_height)
-    x_train, y_train = _load_kaggle_dataset("../datasets/kaggle/", img_width, img_height)
-    display([[x_train[0], y_train[0]]], name="test-pics.svg")
+    x_train, y_train, x_val, y_val = _load_kaggle_dataset("../datasets/kaggle/", img_width, img_height)
+    print(len(x_train), len(y_train), len(x_val), len(y_val))
+    print(x_train[0].shape, y_train[0].shape)
+    display([[x_train[0], y_train[0]]])
+    #_, _, x_val, y_val = _load_dataset("../datasets/segmentation/", img_width, img_height)
 
     model: Model = create_model(img_width, img_height)
     model.summary()
@@ -163,7 +174,7 @@ if __name__ == "__main__":
     history = model.fit(
         x_train, y_train,
         epochs=1,
-        #validation_data=(x_val, y_val)
+        validation_data=(x_val, y_val)
     )
 
     predictions = model.predict(x_val)
