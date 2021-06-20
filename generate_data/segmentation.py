@@ -74,10 +74,7 @@ def _load_kaggle_dataset(path, img_width, img_height):
             img = cv2.imread(img_path)
             img = tf.cast(tf.image.resize_with_pad(img, img_width, img_height), np.uint8) / 255
 
-            if "_val_" in img_path:
-                x_val.append(img)
-            else:
-                x_train.append(img)
+            x_train.append(img)
 
         for img_name in sorted(os.listdir(truth_dir)):
             img_path = truth_dir + img_name
@@ -85,10 +82,7 @@ def _load_kaggle_dataset(path, img_width, img_height):
             mask = tf.cast(tf.image.resize_with_pad(mask, img_width, img_height), np.uint8) / 255
             mask = tf.image.rgb_to_grayscale(mask)
 
-            if "_val_" in img_path:
-                y_val.append(mask)
-            else:
-                y_train.append(mask)
+            y_train.append(mask)
 
     return np.asarray(x_train), np.asarray(y_train), np.asarray(x_val), np.asarray(y_val)
 
@@ -155,32 +149,33 @@ def display(images, name=None):
             plt.axis("off")
 
     if name is not None:
-        plt.savefig(name, format="svg", dpi=1200)
+        plt.savefig("results/" + name, format="svg", dpi=1200)
     plt.show()
+    plt.close()
 
 
 if __name__ == "__main__":
     img_width = 512
     img_height = 512
-    x_train, y_train, x_val, y_val = _load_kaggle_dataset("../datasets/kaggle/", img_width, img_height)
-    print(len(x_train), len(y_train), len(x_val), len(y_val))
-    print(x_train[0].shape, y_train[0].shape)
-    display([[x_train[0], y_train[0]]])
-    #_, _, x_val, y_val = _load_dataset("../datasets/segmentation/", img_width, img_height)
+    x_train, y_train, _, _ = _load_kaggle_dataset("../datasets/kaggle/", img_width, img_height)
+    print("Num training data:", len(x_train))
+
+    _, _, x_val, y_val = _load_dataset("../datasets/segmentation/", img_width, img_height)
 
     model: Model = create_model(img_width, img_height)
     model.summary()
 
     history = model.fit(
         x_train, y_train,
-        epochs=1,
-        validation_data=(x_val, y_val)
+        epochs=50,
     )
 
     predictions = model.predict(x_val)
 
     results = []
     for i in range(len(x_val)):
-        results.append([x_val[i], y_val[i], predictions[i]])
-    #display(results)
+        res = [x_val[i], y_val[i], predictions[i]]
+        results.append(res)
+        display([res], name=str(i) + ".svg")
+    display(results, name="segmentation-results.svg")
 

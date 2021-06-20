@@ -6,3 +6,9 @@ datasets/**
 
 # Python
 __pycache__/
+
+# image results
+*.png
+*.jpeg
+*.jpg
+*.svg
