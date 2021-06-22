@@ -92,6 +92,10 @@ def train_and_predict(dataset_path, bayesian=False):
     predictions = model.predict(x_val)
 
     if bayesian:
+        """
+        If we trained our model on a bayesian CNN, we can now predict various statistical measurements.
+        Here we calculate the mean and the min and max of one standard deviation from the mean
+        """
         prediction_mean = np.mean(predictions, axis=1)
         prediction_min = np.min(predictions, axis=1)
         prediction_max = np.max(predictions, axis=1)
