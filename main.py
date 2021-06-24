@@ -8,7 +8,7 @@ if __name__ == "__main__":
     parser.add_argument("-bayes", action="store_true")
     args = parser.parse_args()
 
-    #dataset_path = "./datasets/new_data/Shamrock/"
-    dataset_path = "./datasets/RockyCreek/"
+    dataset_path = "./datasets/new_data/Shamrock/"
+    #dataset_path = "./datasets/RockyCreek/"
 
     predicter.train_and_predict(dataset_path, bayesian=args.bayes)

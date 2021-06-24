@@ -166,7 +166,7 @@ def train_and_predict():
 
     x_train = np.array(x_train)
     y_train = np.array(y_train)
-    x_val= np.array(x_val)
+    x_val = np.array(x_val)
     y_val = np.array(y_val)
 
     model: Model = _create_model()
