@@ -1,5 +1,6 @@
 # Datafiles 
 datasets/**
+*.zip
 
 # PyCharm
 .idea
@@ -12,3 +13,4 @@ __pycache__/
 *.jpeg
 *.jpg
 *.svg
+

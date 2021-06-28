@@ -101,7 +101,7 @@ def _create_model() -> Model:
 
     f = [16, 32, 48, 64, 128]
     x = encoder_output
-    for i in range(1, len(skip_connection_names) + 1, 1):
+    for i in range(1, len(skip_connection_names) + 1):
         x_skip = encoder.get_layer(skip_connection_names[-i]).output
         x = layers.UpSampling2D((2, 2))(x)
         x = layers.Concatenate()([x, x_skip])
