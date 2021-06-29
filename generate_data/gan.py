@@ -34,9 +34,23 @@ class DCGAN(Model):
 
         return generator
 
-    @staticmethod
-    def _create_discriminator() -> Model:
+    def _create_discriminator(self) -> Model:
         discriminator = models.Sequential()
+        discriminator.add(layers.Input(shape=(self.img_width, self.img_height, self.channels)))
+
+        filters = [4, 8, 16, 32, 64, 128, 256]
+        for f in filters:
+            discriminator.add(layers.Conv2D(filters=f, kernel_size=3, padding="same"))
+            discriminator.add(layers.BatchNormalization(momentum=0.7))
+            discriminator.add(layers.LeakyReLU(0.2))
+            discriminator.add(layers.Dropout(0.25))
+            discriminator.add(layers.AveragePooling2D())
+
+        discriminator.add(layers.Flatten())
+        discriminator.add(layers.Dense(128))
+        discriminator.add(layers.LeakyReLU(0.2))
+        discriminator.add(layers.Dense(1))
+
         return discriminator
 
     def _judge_gauge_height_prediction(self):
