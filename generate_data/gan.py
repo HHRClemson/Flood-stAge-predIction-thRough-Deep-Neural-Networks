@@ -4,19 +4,25 @@ from tensorflow.keras import layers, models, Model
 
 class DCGAN(Model):
 
-    def __init__(self, img_width=512, img_height=512, channels=1, **kwargs):
+    def __init__(self, img_width=512, img_height=512, channels=1, noise_dim=4096, batch_size=128, **kwargs):
         super(DCGAN, self).__init__(name="DCGAN", **kwargs)
         # Train on 512x512 greyscale segmentation pictures (channel = 1)
         self.img_width = img_width
         self.img_height = img_height
         self.channels = channels
+        self.noise_dim = noise_dim
+        self.batch_size = batch_size
+
         self.generator: Model = self._create_generator()
         self.discriminator: Model = self._create_discriminator()
 
-    @staticmethod
-    def _create_generator() -> Model:
+        self.gen_optimizer = tf.keras.optimizers.Adam(1e-4)
+        self.disc_optimizer = tf.keras.optimizers.Adam(1e-4)
+
+    def _create_generator(self) -> Model:
         generator = models.Sequential()
-        generator.add(layers.Reshape(target_shape=[1, 1, 4096], input_shape=[4096]))
+        generator.add(layers.Reshape(
+            target_shape=(1, 1, self.noise_dim), input_shape=(self.noise_dim)))
 
         generator.add(layers.Conv2DTranspose(filters=512, kernel_size=4))
         generator.add(layers.Activation("relu"))
@@ -58,6 +64,29 @@ class DCGAN(Model):
 
     @tf.function
     def train_step(self, images):
+        noise = tf.random.normal([self.batch_size, self.noise_dim])
+
+        with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+            generated_images = self.generator(noise, training=True)
+
+            real_output = self.discriminator(images, training=True)
+            fake_output = self.discriminator(generated_images, training=True)
+
+            generator_loss = self.calc_generator_loss(fake_output)
+            discriminator_loss = self.calc_discriminator_loss(real_output, fake_output)
+
+        gen_grads = gen_tape.gradient(generator_loss, self.generator.trainable_variables)
+        self.gen_optimizer.apply_gradients(zip(gen_grads, self.generator.trainable_variables))
+
+        disc_grads = disc_tape.gradient(discriminator_loss, self.discriminator.trainable_variables)
+        self.disc_optimizer.apply_gradients(zip(disc_grads, self.discriminator.trainable_variables))
+
+    @staticmethod
+    def calc_generator_loss(fake_output):
+        pass
+
+    @staticmethod
+    def calc_discriminator_loss(real_output, fake_output):
         pass
 
     def call(self, inputs, training=None, mask=None):
@@ -78,4 +107,4 @@ class DCGAN(Model):
 
 if __name__ == "__main__":
     gan = DCGAN()
-    gan.generator.summary()
+    gan.summary()
