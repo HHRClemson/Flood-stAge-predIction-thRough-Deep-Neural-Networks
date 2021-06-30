@@ -13,16 +13,26 @@ class DCGAN(Model):
         self.noise_dim = noise_dim
         self.batch_size = batch_size
 
-        self.generator: Model = self._create_generator()
-        self.discriminator: Model = self._create_discriminator()
+        cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
+        self.generator: Model = self._create_generator()
         self.gen_optimizer = tf.keras.optimizers.Adam(1e-4)
+        # Compare the decision of the discriminator on the generated image to an array of 1s
+        self.gen_loss = lambda fake_out: cross_entropy(tf.ones_like(fake_out), fake_out)
+
+        self.discriminator: Model = self._create_discriminator()
         self.disc_optimizer = tf.keras.optimizers.Adam(1e-4)
+        # Compare the discriminator decision of the real images to an array of 1s and the
+        # discriminator predictions on the fake images to an array of 0s
+        self.disc_loss = lambda real_out, fake_out: sum([
+            cross_entropy(tf.ones_like(real_out), real_out),
+            cross_entropy(tf.zeros_like(fake_out), fake_out)
+        ])
 
     def _create_generator(self) -> Model:
         generator = models.Sequential()
         generator.add(layers.Reshape(
-            target_shape=(1, 1, self.noise_dim), input_shape=(self.noise_dim)))
+            target_shape=[1, 1, self.noise_dim], input_shape=[self.noise_dim]))
 
         generator.add(layers.Conv2DTranspose(filters=512, kernel_size=4))
         generator.add(layers.Activation("relu"))
@@ -72,22 +82,14 @@ class DCGAN(Model):
             real_output = self.discriminator(images, training=True)
             fake_output = self.discriminator(generated_images, training=True)
 
-            generator_loss = self.calc_generator_loss(fake_output)
-            discriminator_loss = self.calc_discriminator_loss(real_output, fake_output)
+            generator_loss = self.gen_loss(fake_output)
+            discriminator_loss = self.disc_loss(real_output, fake_output)
 
         gen_grads = gen_tape.gradient(generator_loss, self.generator.trainable_variables)
         self.gen_optimizer.apply_gradients(zip(gen_grads, self.generator.trainable_variables))
 
         disc_grads = disc_tape.gradient(discriminator_loss, self.discriminator.trainable_variables)
         self.disc_optimizer.apply_gradients(zip(disc_grads, self.discriminator.trainable_variables))
-
-    @staticmethod
-    def calc_generator_loss(fake_output):
-        pass
-
-    @staticmethod
-    def calc_discriminator_loss(real_output, fake_output):
-        pass
 
     def call(self, inputs, training=None, mask=None):
         output = []
