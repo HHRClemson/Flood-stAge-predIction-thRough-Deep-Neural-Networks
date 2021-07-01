@@ -1,10 +1,9 @@
 import numpy as np
-import json
 import cv2
 import os
 
 import tensorflow as tf
-from tensorflow.keras import layers, Model, metrics
+from tensorflow.keras import Model
 
 import matplotlib.pyplot as plt
 
@@ -13,6 +12,7 @@ import generate_data.segmentation as segmentation
 
 IMG_WIDTH = 512
 IMG_HEIGHT = 512
+NOISE_DIM = 4096
 
 
 def _create_segmentations(path):
@@ -58,12 +58,22 @@ def _train_gan():
 
     history = gan.train(
         segmentations,
-        epochs=50
+        epochs=500
     )
 
-    #gan.save("generate_data/saved_models/gan")
+    generated = gan(tf.random.normal([16, NOISE_DIM]))
+
+    fig = plt.figure(figsize=(4, 4))
+
+    for i in range(len(generated)):
+        fig.add_subplot(4, 4, i + 1)
+        plt.imshow(generated[i])
+        plt.axis("off")
+
+    plt.savefig("generated-images.svg", format="svg", dpi=1200)
+    plt.close()
 
 
 if __name__ == "__main__":
     _train_gan()
-    #_create_segmentations("datasets/new_data/Shamrock/")
+    # _create_segmentations("datasets/new_data/Shamrock/")

@@ -79,8 +79,9 @@ class DCGAN(Model):
 
             gen_loss, disc_loss = self.train_step(dataset)
 
-            print('Time for epoch {e} is {t} sec. Generator loss: {gl}, Discriminiator loss: {dl}'
+            print('Time for epoch {e}/{ne} is {t} sec. Generator loss: {gl}, Discriminiator loss: {dl}'
                   .format(e=epoch + 1,
+                          ne=epochs,
                           t=time.time() - start,
                           gl=gen_loss,
                           dl=disc_loss))
@@ -106,7 +107,7 @@ class DCGAN(Model):
         return generator_loss, discriminator_loss
 
     def call(self, inputs, training=None, mask=None):
-        return [self.generator(image) for image in inputs]
+        return self.generator(inputs)
 
     def get_config(self):
         config = super(DCGAN, self).get_config()
