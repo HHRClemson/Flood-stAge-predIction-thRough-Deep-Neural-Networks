@@ -153,6 +153,7 @@ def _display(images, name=None):
 
     if name is not None:
         plt.savefig("results/" + name, format="svg", dpi=1200)
+    plt.show()
     plt.close()
 
 
@@ -191,6 +192,12 @@ def train_and_predict():
 
 
 def predict_on_learned_model(images):
-    model: Model = tf.keras.models.load_model("saved_models/u-net")
-    predictions = model.predict(images)
-    return predictions
+    # Compile the model by ourselves since _dice_loss and _dice_coef are not subclassing keras.metrics
+    u_net: Model = tf.keras.models.load_model("generate_data/saved_models/u-net/", compile=False)
+    u_net.compile(
+        optimizer=tf.keras.optimizers.Nadam(1e-4),
+        loss=_dice_loss,
+        metrics=[_dice_coef, metrics.Recall(), metrics.Precision()]
+    )
+
+    return u_net.predict(images)

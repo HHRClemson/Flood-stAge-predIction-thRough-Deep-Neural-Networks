@@ -1,3 +1,5 @@
+import time
+
 import tensorflow as tf
 from tensorflow.keras import layers, models, Model
 
@@ -39,7 +41,6 @@ class DCGAN(Model):
 
         filters = [4, 8, 16, 32, 64, 128, 256]
         for f in reversed(filters):
-            print(f)
             generator.add(layers.Conv2D(filters=f, kernel_size=3, padding="same"))
             generator.add(layers.BatchNormalization(momentum=0.7))
             generator.add(layers.Activation("relu"))
@@ -52,7 +53,7 @@ class DCGAN(Model):
 
     def _create_discriminator(self) -> Model:
         discriminator = models.Sequential()
-        discriminator.add(layers.Input(shape=(self.img_width, self.img_height, self.channels)))
+        discriminator.add(layers.InputLayer(input_shape=(self.img_width, self.img_height, self.channels)))
 
         filters = [4, 8, 16, 32, 64, 128, 256]
         for f in filters:
@@ -72,6 +73,18 @@ class DCGAN(Model):
     def _judge_gauge_height_prediction(self):
         pass
 
+    def train(self, dataset, epochs):
+        for epoch in range(epochs):
+            start = time.time()
+
+            gen_loss, disc_loss = self.train_step(dataset)
+
+            print('Time for epoch {e} is {t} sec. Generator loss: {gl}, Discriminiator loss: {dl}'
+                  .format(e=epoch + 1,
+                          t=time.time() - start,
+                          gl=gen_loss,
+                          dl=disc_loss))
+
     @tf.function
     def train_step(self, images):
         noise = tf.random.normal([self.batch_size, self.noise_dim])
@@ -90,12 +103,10 @@ class DCGAN(Model):
 
         disc_grads = disc_tape.gradient(discriminator_loss, self.discriminator.trainable_variables)
         self.disc_optimizer.apply_gradients(zip(disc_grads, self.discriminator.trainable_variables))
+        return generator_loss, discriminator_loss
 
     def call(self, inputs, training=None, mask=None):
-        output = []
-        for image in inputs:
-            output.append(self.generator(image))
-        return output
+        return [self.generator(image) for image in inputs]
 
     def get_config(self):
         config = super(DCGAN, self).get_config()
