@@ -41,37 +41,43 @@ def _create_segmentations(path):
 def _load_segmentation_data(path):
     images = []
     for img_name in os.listdir(path):
+        if ".png" not in img_name:
+            continue
         img = cv2.imread(path + img_name)
         img = tf.cast(tf.image.resize_with_pad(img, IMG_WIDTH, IMG_HEIGHT), np.uint8) / 255
-        img = tf.image.rgb_to_grayscale(img)
+        #img = tf.image.rgb_to_grayscale(img)
         images.append(img)
     return np.array(images)
 
 
 def _train_gan():
-    segmentations = _load_segmentation_data("datasets/new_data/Shamrock/segmentations/")
-    gan: Model = DCGAN()
+    segmentations = _load_segmentation_data("datasets/new_data/")
+    print(len(segmentations))
+    gan: Model = DCGAN(channels=3, noise_dim=NOISE_DIM, batch_size=32)
     gan.compile(
         optimizer=tf.keras.optimizers.Adam(),
         loss="binary_crossentropy"
     )
 
-    history = gan.train(
+    generated_imgs = gan.train(
         segmentations,
-        epochs=500
+        epochs=10,
+        batch_size=16,
     )
 
-    generated = gan(tf.random.normal([16, NOISE_DIM]))
+    generated_imgs.append(gan(tf.random.normal([16, NOISE_DIM])))
 
-    fig = plt.figure(figsize=(4, 4))
+    for i, generated in enumerate(generated_imgs):
+        fig = plt.figure(figsize=(4, 4))
 
-    for i in range(len(generated)):
-        fig.add_subplot(4, 4, i + 1)
-        plt.imshow(generated[i])
-        plt.axis("off")
+        for j in range(len(generated)):
+            fig.add_subplot(4, 4, j + 1)
+            plt.imshow(generated[j])
+            plt.axis("off")
 
-    plt.savefig("generated-images.svg", format="svg", dpi=1200)
-    plt.close()
+        file_name = "gan-results/generated_images{}.svg".format(i)
+        plt.savefig(file_name, format="svg", dpi=1200)
+        plt.close()
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+import numpy as np
 import time
 
 import tensorflow as tf
@@ -46,8 +47,8 @@ class DCGAN(Model):
             generator.add(layers.Activation("relu"))
             generator.add(layers.UpSampling2D())
 
-        generator.add(layers.Conv2D(filters=1, kernel_size=3, padding="same"))
-        generator.add(layers.Activation("relu"))
+        generator.add(layers.Conv2D(filters=self.channels, kernel_size=3, padding="same"))
+        generator.add(layers.Activation("sigmoid"))
 
         return generator
 
@@ -73,18 +74,37 @@ class DCGAN(Model):
     def _judge_gauge_height_prediction(self):
         pass
 
-    def train(self, dataset, epochs):
+    def train(self, dataset, epochs, batch_size):
+        generated_images = []
+
         for epoch in range(epochs):
             start = time.time()
 
-            gen_loss, disc_loss = self.train_step(dataset)
+            next_batch = []
+            min_gen_loss = 999999
+            min_disc_loss = 999999
+
+            for i in range(len(dataset)):
+                next_batch.append(dataset[i])
+                if i % batch_size == 0:
+                    gen_loss, disc_loss = self.train_step(np.array(next_batch))
+                    min_gen_loss = min(min_gen_loss, gen_loss)
+                    min_disc_loss = min(min_disc_loss, disc_loss)
+                    next_batch = []
+
+            # generate 10 times pictures based on the generator trained to this epoch
+            # to visualize the improvements and find the sweet epoch point
+            if epoch % (epochs / 10) == 0:
+                generated_images.append(self.call(tf.random.normal([16, self.noise_dim])))
 
             print('Time for epoch {e}/{ne} is {t} sec. Generator loss: {gl}, Discriminiator loss: {dl}'
                   .format(e=epoch + 1,
                           ne=epochs,
                           t=time.time() - start,
-                          gl=gen_loss,
-                          dl=disc_loss))
+                          gl=min_gen_loss,
+                          dl=min_disc_loss))
+
+        return generated_images
 
     @tf.function
     def train_step(self, images):
