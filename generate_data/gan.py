@@ -5,34 +5,56 @@ import tensorflow as tf
 from tensorflow.keras import layers, models, Model
 
 
-class DCGAN(Model):
+class ReGAN(Model):
 
-    def __init__(self, img_width=512, img_height=512, channels=1, noise_dim=4096, batch_size=128, **kwargs):
-        super(DCGAN, self).__init__(name="DCGAN", **kwargs)
-        # Train on 512x512 greyscale segmentation pictures (channel = 1)
-        self.img_width = img_width
-        self.img_height = img_height
+    def __init__(self,
+                 img_size=512,
+                 channels=1,
+                 latent_dim=4096,
+                 batch_size=128,
+                 kernel_size=5,
+                 **kwargs):
+        super(ReGAN, self).__init__(name="ReGAN", **kwargs)
+
+        self.image_size = img_size
         self.channels = channels
-        self.noise_dim = noise_dim
+        self.latent_dim = latent_dim
         self.batch_size = batch_size
+        self.kernel_size = kernel_size
 
-        cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
-
+        # img -> z
+        self.encoder: Model = self._create_encoder()
+        # [z, l] -> new image
         self.generator: Model = self._create_generator()
-        self.gen_optimizer = tf.keras.optimizers.Adam(1e-4)
-        # Compare the decision of the discriminator on the generated image to an array of 1s
-        self.gen_loss = lambda fake_out: cross_entropy(tf.ones_like(fake_out), fake_out)
+        # discriminate the encoder (z) to learn proper encoding
+        self.encoder_discriminator: Model = self._create_encoder_discriminator()
+        # discriminate the generator (new img) to learn proper new images
+        self.image_discriminator: Model = self._create_image_discriminator()
 
-        self.discriminator: Model = self._create_discriminator()
-        self.disc_optimizer = tf.keras.optimizers.Adam(1e-4)
-        # Compare the discriminator decision of the real images to an array of 1s and the
-        # discriminator predictions on the fake images to an array of 0s
-        self.disc_loss = lambda real_out, fake_out: sum([
-            cross_entropy(tf.ones_like(real_out), real_out),
-            cross_entropy(tf.zeros_like(fake_out), fake_out)
-        ])
+    def _create_encoder(self) -> Model:
+        """
+        Create an encoder model to translate the image to a latent space which will be the
+        input for the generator
+        """
+        encoder = models.Sequential(name="Encoder")
+        encoder.add(layers.InputLayer(
+            input_shape=(self.img_size, self.img_size, self.channels)))
+
+        filters = [16, 32, 64, 128]
+        for f in filters:
+            encoder.add(layers.Conv2D(filters=f, kernel_size=self.kernel_size, padding="same"))
+            encoder.add(layers.Activation("relu"))
+
+        encoder.add(layers.Flatten())
+        encoder.add(layers.Dense(units=self.latent_dim))
+
+        return encoder
 
     def _create_generator(self) -> Model:
+        """
+        Create the generator which generates a new image based on the encoding of the input images
+        and their gauge height
+        """
         generator = models.Sequential()
         generator.add(layers.Reshape(
             target_shape=[1, 1, self.noise_dim], input_shape=[self.noise_dim]))
@@ -52,9 +74,20 @@ class DCGAN(Model):
 
         return generator
 
-    def _create_discriminator(self) -> Model:
+    def _create_encoder_discriminator(self) -> Model:
+        """
+        Create a discriminator for the encoder to force it to create a proper latent space Z
+        """
+        pass
+
+    def _create_image_discriminator(self) -> Model:
+        """
+        Create a discriminator for the generator to force it to generate proper images and also
+        judge the gauge height of the generated image
+        """
         discriminator = models.Sequential()
-        discriminator.add(layers.InputLayer(input_shape=(self.img_width, self.img_height, self.channels)))
+        discriminator.add(layers.InputLayer(
+            input_shape=(self.img_size, self.img_size, self.channels)))
 
         filters = [4, 8, 16, 32, 64, 128, 256]
         for f in filters:
@@ -70,9 +103,6 @@ class DCGAN(Model):
         discriminator.add(layers.Dense(1))
 
         return discriminator
-
-    def _judge_gauge_height_prediction(self):
-        pass
 
     def train(self, dataset, epochs, batch_size):
         generated_images = []
@@ -127,18 +157,26 @@ class DCGAN(Model):
         return generator_loss, discriminator_loss
 
     def call(self, inputs, training=None, mask=None):
-        return self.generator(inputs)
+        pass
 
     def get_config(self):
-        config = super(DCGAN, self).get_config()
-        config.update({"img_width": self.img_width, "img_height": self.img_height})
+        config = super(ReGAN, self).get_config()
+        config.update({
+            "img_size": self.image_size,
+            "channels": self.channels,
+            "latent_dim": self.latent_dim,
+            "batch_size": self.batch_size,
+            "kernel_size": self.kernel_size
+        })
         return config
 
     def summary(self, line_length=None, positions=None, print_fn=None):
+        self.encoder.summary(line_length, positions, print_fn)
+        self.encoder_discriminator.summary(line_length, positions, print_fn)
         self.generator.summary(line_length, positions, print_fn)
-        self.discriminator.summary(line_length, positions, print_fn)
+        self.image_discriminator.summary(line_length, positions, print_fn)
 
 
 if __name__ == "__main__":
-    gan = DCGAN()
+    gan = ReGAN()
     gan.summary()
