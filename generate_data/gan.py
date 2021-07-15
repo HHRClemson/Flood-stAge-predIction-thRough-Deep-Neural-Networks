@@ -40,7 +40,7 @@ class ReGAN(Model):
         encoder.add(layers.InputLayer(
             input_shape=(self.img_size, self.img_size, self.channels)))
 
-        filters = [16, 32, 64, 128]
+        filters = [16, 32, 64, 128, 256]
         for f in filters:
             encoder.add(layers.Conv2D(filters=f, kernel_size=self.kernel_size, padding="same"))
             encoder.add(layers.Activation("relu"))
@@ -52,27 +52,26 @@ class ReGAN(Model):
 
     def _create_generator(self) -> Model:
         """
-        Create the generator which generates a new image based on the encoding of the input images
-        and their gauge height
+        Create the generator which generates a new image based on the encoding of the
+        input images (z) and their corresponding gauge height (y)
         """
-        generator = models.Sequential()
-        generator.add(layers.Reshape(
-            target_shape=[1, 1, self.noise_dim], input_shape=[self.noise_dim]))
+        latent_space_input = layers.Input(shape=(self.latent_dim, ))
+        gauge_height_input = layers.Input(shape=(1, ))
 
-        generator.add(layers.Conv2DTranspose(filters=512, kernel_size=4))
-        generator.add(layers.Activation("relu"))
+        x = layers.Concatenate()([latent_space_input, gauge_height_input])
+        x = layers.Conv2DTranspose(filters=512, kernel_size=self.kernel_size)(x)
 
         filters = [4, 8, 16, 32, 64, 128, 256]
         for f in reversed(filters):
-            generator.add(layers.Conv2D(filters=f, kernel_size=3, padding="same"))
-            generator.add(layers.BatchNormalization(momentum=0.7))
-            generator.add(layers.Activation("relu"))
-            generator.add(layers.UpSampling2D())
+            x = layers.Conv2D(filters=f, kernel_size=self.kernel_size, padding="same")(x)
+            x = layers.BatchNormalization(momentum=0.7)(x)
+            x = layers.Activation("relu")(x)
+            x = layers.UpSampling2D()(x)
 
-        generator.add(layers.Conv2D(filters=self.channels, kernel_size=3, padding="same"))
-        generator.add(layers.Activation("sigmoid"))
+        x = layers.Conv2D(filters=self.channels, kernel_size=self.kernel_size, padding="same")
+        x = layers.Activation("sigmoid")(x)
 
-        return generator
+        return Model(inputs=[latent_space_input, gauge_height_input], outputs=[x])
 
     def _create_encoder_discriminator(self) -> Model:
         """
@@ -82,8 +81,8 @@ class ReGAN(Model):
 
     def _create_image_discriminator(self) -> Model:
         """
-        Create a discriminator for the generator to force it to generate proper images and also
-        judge the gauge height of the generated image
+        Create a discriminator for the generator to force it to generate proper images and
+        also judge the gauge height of the generated image
         """
         discriminator = models.Sequential()
         discriminator.add(layers.InputLayer(
@@ -157,7 +156,9 @@ class ReGAN(Model):
         return generator_loss, discriminator_loss
 
     def call(self, inputs, training=None, mask=None):
-        pass
+        for img, gauge_height in inputs:
+            encoded = self.encoder(img)
+            yield self.generator(encoded, gauge_height)
 
     def get_config(self):
         config = super(ReGAN, self).get_config()
