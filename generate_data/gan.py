@@ -2,64 +2,52 @@ import numpy as np
 import time
 
 import tensorflow as tf
-from tensorflow.keras import layers, models, Model
+from tensorflow.keras import layers, Model
 
 
 class ReGAN(Model):
 
     def __init__(self,
-                 img_size=512,
-                 channels=1,
-                 latent_dim=4096,
-                 batch_size=128,
-                 kernel_size=5,
+                 image_size=256,
+                 channels=3,
+                 batch_size=32,
+                 noise_dim=2048,
+                 kernel_size=3,
+                 stride_size=2,
                  **kwargs):
         super(ReGAN, self).__init__(name="ReGAN", **kwargs)
 
-        self.image_size = img_size
+        self.image_size = image_size
         self.channels = channels
-        self.latent_dim = latent_dim
+        self.noise_dim = noise_dim
         self.batch_size = batch_size
         self.kernel_size = kernel_size
+        self.stride_size = stride_size
 
-        # img -> z
-        self.encoder: Model = self._create_encoder()
-        # [z, l] -> new image
         self.generator: Model = self._create_generator()
-        # discriminate the encoder (z) to learn proper encoding
-        self.encoder_discriminator: Model = self._create_encoder_discriminator()
-        # discriminate the generator (new img) to learn proper new images
-        self.image_discriminator: Model = self._create_image_discriminator()
+        self.generator.summary()
 
-    def _create_encoder(self) -> Model:
-        """
-        Create an encoder model to translate the image to a latent space which will be the
-        input for the generator
-        """
-        encoder = models.Sequential(name="Encoder")
-        encoder.add(layers.InputLayer(
-            input_shape=(self.img_size, self.img_size, self.channels)))
-
-        filters = [16, 32, 64, 128, 256]
-        for f in filters:
-            encoder.add(layers.Conv2D(filters=f, kernel_size=self.kernel_size, padding="same"))
-            encoder.add(layers.Activation("relu"))
-
-        encoder.add(layers.Flatten())
-        encoder.add(layers.Dense(units=self.latent_dim))
-
-        return encoder
+        self.discriminator = self._create_discriminator()
+        self.discriminator.summary()
 
     def _create_generator(self) -> Model:
         """
-        Create the generator which generates a new image based on the encoding of the
-        input images (z) and their corresponding gauge height (y)
+        Create the generator which generates a new image based on the given gauge height
         """
-        latent_space_input = layers.Input(shape=(self.latent_dim, ))
-        gauge_height_input = layers.Input(shape=(1, ))
+        latent_space_input = layers.Input(shape=(self.noise_dim, ))
+        gauge_height_input = layers.Input(shape=(1,))
 
-        x = layers.Concatenate()([latent_space_input, gauge_height_input])
-        x = layers.Conv2DTranspose(filters=512, kernel_size=self.kernel_size)(x)
+        """
+        We use the naive label input mechanism (NLI) by Ding et al. 
+        for a continuous conditional GAN (CcGAN).
+        See here: https://arxiv.org/pdf/2011.07466.pdf
+        """
+        x = tf.add(latent_space_input, gauge_height_input)
+
+        # Reshape to be valid input for the Conv2DTranspose layer
+        x = layers.Reshape(target_shape=[1, 1, self.noise_dim], input_shape=[self.noise_dim])(x)
+        x = layers.Conv2DTranspose(filters=512, kernel_size=2)(x)
+        x = layers.Activation("relu")(x)
 
         filters = [4, 8, 16, 32, 64, 128, 256]
         for f in reversed(filters):
@@ -68,40 +56,46 @@ class ReGAN(Model):
             x = layers.Activation("relu")(x)
             x = layers.UpSampling2D()(x)
 
-        x = layers.Conv2D(filters=self.channels, kernel_size=self.kernel_size, padding="same")
-        x = layers.Activation("sigmoid")(x)
+        x = layers.Conv2D(filters=self.channels, kernel_size=self.kernel_size, padding="same")(x)
+        x = layers.Activation("tanh")(x)
 
-        return Model(inputs=[latent_space_input, gauge_height_input], outputs=[x])
+        return Model(inputs=[latent_space_input, gauge_height_input],
+                     outputs=[x],
+                     name="Generator")
 
-    def _create_encoder_discriminator(self) -> Model:
+    def _create_discriminator(self) -> Model:
         """
-        Create a discriminator for the encoder to force it to create a proper latent space Z
+        Create a discriminator to judge the created image with it corresponding gauge height.
         """
-        pass
+        image_input = layers.Input(shape=(self.image_size, self.image_size, self.channels))
+        gauge_height_input = layers.Input(shape=(1,))
 
-    def _create_image_discriminator(self) -> Model:
-        """
-        Create a discriminator for the generator to force it to generate proper images and
-        also judge the gauge height of the generated image
-        """
-        discriminator = models.Sequential()
-        discriminator.add(layers.InputLayer(
-            input_shape=(self.img_size, self.img_size, self.channels)))
-
+        x = image_input
         filters = [4, 8, 16, 32, 64, 128, 256]
         for f in filters:
-            discriminator.add(layers.Conv2D(filters=f, kernel_size=3, padding="same"))
-            discriminator.add(layers.BatchNormalization(momentum=0.7))
-            discriminator.add(layers.LeakyReLU(0.2))
-            discriminator.add(layers.Dropout(0.25))
-            discriminator.add(layers.AveragePooling2D())
+            x = layers.Conv2D(filters=f, kernel_size=3, padding="same")(x)
+            x = layers.BatchNormalization(momentum=0.7)(x)
+            x = layers.LeakyReLU(0.2)(x)
+            x = layers.Dropout(0.25)(x)
+            x = layers.AveragePooling2D()(x)
 
-        discriminator.add(layers.Flatten())
-        discriminator.add(layers.Dense(128))
-        discriminator.add(layers.LeakyReLU(0.2))
-        discriminator.add(layers.Dense(1))
+        x = layers.Flatten()(x)
+        x = layers.Dense(128)(x)
+        x = layers.LeakyReLU(0.2)(x)
+        x = layers.Dense(1)(x)
 
-        return discriminator
+        """
+        We use the naive label input mechanism (NLI) proposed by Ding et al. in 2021
+        for a continuous conditional GAN (CcGAN).
+        See here: https://arxiv.org/pdf/2011.07466.pdf
+        """
+        inner_product = tf.tensordot(x, gauge_height_input, axes=1)
+        x = layers.Dense(1)(x)
+        out = tf.add(x, inner_product)
+
+        return Model(inputs=[image_input, gauge_height_input],
+                     outputs=[out],
+                     name="Discriminator")
 
     def train(self, dataset, epochs, batch_size):
         generated_images = []
@@ -110,8 +104,8 @@ class ReGAN(Model):
             start = time.time()
 
             next_batch = []
-            min_gen_loss = 999999
-            min_disc_loss = 999999
+            min_gen_loss = float("inf")
+            min_disc_loss = float("inf")
 
             for i in range(len(dataset)):
                 next_batch.append(dataset[i])
@@ -163,7 +157,7 @@ class ReGAN(Model):
     def get_config(self):
         config = super(ReGAN, self).get_config()
         config.update({
-            "img_size": self.image_size,
+            "image_size": self.image_size,
             "channels": self.channels,
             "latent_dim": self.latent_dim,
             "batch_size": self.batch_size,
@@ -172,12 +166,10 @@ class ReGAN(Model):
         return config
 
     def summary(self, line_length=None, positions=None, print_fn=None):
-        self.encoder.summary(line_length, positions, print_fn)
-        self.encoder_discriminator.summary(line_length, positions, print_fn)
         self.generator.summary(line_length, positions, print_fn)
-        self.image_discriminator.summary(line_length, positions, print_fn)
+        self.discriminator.summary(line_length, positions, print_fn)
 
 
 if __name__ == "__main__":
     gan = ReGAN()
-    gan.summary()
+    #gan.summary()

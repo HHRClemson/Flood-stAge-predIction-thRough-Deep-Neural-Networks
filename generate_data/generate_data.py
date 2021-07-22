@@ -7,7 +7,7 @@ from tensorflow.keras import Model
 
 import matplotlib.pyplot as plt
 
-from generate_data.gan import DCGAN
+from generate_data.gan import ReGAN
 import generate_data.segmentation as segmentation
 
 IMG_WIDTH = 512
@@ -53,7 +53,9 @@ def _load_segmentation_data(path):
 def _train_gan():
     segmentations = _load_segmentation_data("datasets/new_data/")
     print(len(segmentations))
-    gan: Model = DCGAN(channels=3, noise_dim=NOISE_DIM, batch_size=32)
+    gan: Model = ReGAN(channels=3,
+                       noise_dim=NOISE_DIM,
+                       batch_size=32)
     gan.compile(
         optimizer=tf.keras.optimizers.Adam(),
         loss="binary_crossentropy"
