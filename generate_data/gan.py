@@ -4,6 +4,8 @@ import time
 import tensorflow as tf
 from tensorflow.keras import layers, Model
 
+from generate_data.cvae import CVAE
+
 
 class ReGAN(Model):
 
@@ -14,6 +16,7 @@ class ReGAN(Model):
                  noise_dim=2048,
                  kernel_size=3,
                  stride_size=2,
+                 encoder=None,
                  **kwargs):
         super(ReGAN, self).__init__(name="ReGAN", **kwargs)
 
@@ -23,6 +26,19 @@ class ReGAN(Model):
         self.batch_size = batch_size
         self.kernel_size = kernel_size
         self.stride_size = stride_size
+        self.encoder: Model = encoder
+
+        if self.encoder is None:
+            """Create and train a new encoder"""
+            cvae = CVAE(image_size=self.image_size,
+                        channels=self.channels,
+                        latent_dim=self.noise_dim,
+                        kernel_size=self.kernel_size,
+                        stride_size=self.stride_size)
+            self.encoder = cvae.train()
+        self.encoder.summary()
+
+        self.filters = [4, 8, 16, 32, 64, 128, 256]
 
         self.generator: Model = self._create_generator()
         self.generator.summary()
@@ -31,10 +47,8 @@ class ReGAN(Model):
         self.discriminator.summary()
 
     def _create_generator(self) -> Model:
-        """
-        Create the generator which generates a new image based on the given gauge height
-        """
-        latent_space_input = layers.Input(shape=(self.noise_dim, ))
+        """Create the generator which generates a new image based on the given gauge height"""
+        latent_space_input = layers.Input(shape=(self.noise_dim,))
         gauge_height_input = layers.Input(shape=(1,))
 
         """
@@ -49,8 +63,7 @@ class ReGAN(Model):
         x = layers.Conv2DTranspose(filters=512, kernel_size=2)(x)
         x = layers.Activation("relu")(x)
 
-        filters = [4, 8, 16, 32, 64, 128, 256]
-        for f in reversed(filters):
+        for f in reversed(self.filters):
             x = layers.Conv2D(filters=f, kernel_size=self.kernel_size, padding="same")(x)
             x = layers.BatchNormalization(momentum=0.7)(x)
             x = layers.Activation("relu")(x)
@@ -64,15 +77,12 @@ class ReGAN(Model):
                      name="Generator")
 
     def _create_discriminator(self) -> Model:
-        """
-        Create a discriminator to judge the created image with it corresponding gauge height.
-        """
+        """Create a discriminator to judge the created image with its corresponding gauge height"""
         image_input = layers.Input(shape=(self.image_size, self.image_size, self.channels))
         gauge_height_input = layers.Input(shape=(1,))
 
         x = image_input
-        filters = [4, 8, 16, 32, 64, 128, 256]
-        for f in filters:
+        for f in self.filters:
             x = layers.Conv2D(filters=f, kernel_size=3, padding="same")(x)
             x = layers.BatchNormalization(momentum=0.7)(x)
             x = layers.LeakyReLU(0.2)(x)
@@ -172,4 +182,4 @@ class ReGAN(Model):
 
 if __name__ == "__main__":
     gan = ReGAN()
-    #gan.summary()
+    # gan.summary()

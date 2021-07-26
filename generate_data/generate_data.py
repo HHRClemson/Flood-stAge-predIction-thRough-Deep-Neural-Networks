@@ -10,9 +10,9 @@ import matplotlib.pyplot as plt
 from generate_data.gan import ReGAN
 import generate_data.segmentation as segmentation
 
-IMG_WIDTH = 512
-IMG_HEIGHT = 512
-NOISE_DIM = 4096
+IMG_WIDTH = 256
+IMG_HEIGHT = 256
+NOISE_DIM = 2048
 
 
 def _create_segmentations(path):
