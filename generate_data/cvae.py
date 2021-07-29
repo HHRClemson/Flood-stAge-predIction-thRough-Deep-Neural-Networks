@@ -13,7 +13,7 @@ class CVAE(Model):
     def __init__(self,
                  image_size=256,
                  channels=3,
-                 latent_dim=2048,
+                 latent_dim=512,
                  kernel_size=3,
                  stride_size=2,
                  **kwargs):
@@ -28,7 +28,12 @@ class CVAE(Model):
         self.filters = [8, 16, 32, 64, 128]
 
         self.encoder: Model = self._create_encoder()
+        self.enc_optimizer = tf.keras.optimizers.Adam(1e-4, loss="binary_crossentropy")
+
         self.decoder: Model = self._create_decoder()
+        self.dec_optimizer = tf.keras.optimizers.Adam(1e-4, loss="binary_crossentropy")
+
+        self.loss_function = tf.keras.losses.BinaryCrossentropy()
 
     def _create_encoder(self) -> Model:
         """
@@ -53,7 +58,9 @@ class CVAE(Model):
         """Create a decoder as an discriminator for the encoder training"""
         decoder = models.Sequential(name="Decoder")
         decoder.add(layers.InputLayer(input_shape=self.latent_dim))
-        decoder.add(layers.Reshape(target_shape=(1, 1, self.latent_dim)))
+        decoder.add(layers.Dense(16 * 16 * 64))
+        decoder.add(layers.Activation("relu"))
+        decoder.add(layers.Reshape(target_shape=(16, 16, 64)))
 
         for f in reversed(self.filters):
             decoder.add(layers.Conv2DTranspose(
@@ -71,16 +78,21 @@ class CVAE(Model):
         return self.encoder
 
     @tf.function
-    def train_step(self, images):
+    def train_step(self, image):
         """
         We train the encoder by maximizing the evidence lower bound (ELBO) on the
         marginal log-likelihood.
         """
-        pass
+        with tf.GradientTape() as enc_tape, tf.GradientTape() as dec_tape:
+            reconstructed = self.decoder(self.encoder(image))
+            loss = self.loss_function(image, reconstructed)
 
-    @staticmethod
-    def _compute_loss(model: Model, x):
-        return 0.0
+        enc_grads = enc_tape.gradient(loss, self.encoder.trainable_variables)
+        self.encoder.apply_gradients(zip(enc_grads, self.encoder.trainable_variables))
+
+        dec_grads = dec_tape.gradient(loss, self.decoder.trainable_variables)
+        self.decoder.apply_gradients(zip(dec_grads, self.decoder.trainable_variables))
+        return loss
 
     def call(self, inputs, training=None, mask=None):
         for img in inputs:
