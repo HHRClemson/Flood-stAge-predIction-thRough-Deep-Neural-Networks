@@ -1,5 +1,3 @@
-import numpy as np
-
 import tensorflow as tf
 from tensorflow.keras import layers, models, Model
 
@@ -84,7 +82,7 @@ class CVAE(Model):
         marginal log-likelihood.
         """
         with tf.GradientTape() as enc_tape, tf.GradientTape() as dec_tape:
-            reconstructed = self.decoder(self.encoder(image))
+            reconstructed = self.decoder(self.encoder(image, training=True), training=True)
             loss = self.loss_function(image, reconstructed)
 
         enc_grads = enc_tape.gradient(loss, self.encoder.trainable_variables)
@@ -115,4 +113,3 @@ class CVAE(Model):
 if __name__ == "__main__":
     cvae = CVAE()
     cvae.summary()
-

@@ -4,47 +4,32 @@ import time
 import tensorflow as tf
 from tensorflow.keras import layers, Model
 
-from generate_data.cvae import CVAE
-
 
 class ReGAN(Model):
 
     def __init__(self,
+                 encoder,
                  image_size=256,
                  channels=3,
                  batch_size=32,
                  noise_dim=2048,
                  kernel_size=3,
                  stride_size=2,
-                 encoder=None,
                  **kwargs):
         super(ReGAN, self).__init__(name="ReGAN", **kwargs)
 
+        self.encoder: Model = encoder
         self.image_size = image_size
         self.channels = channels
         self.noise_dim = noise_dim
         self.batch_size = batch_size
         self.kernel_size = kernel_size
         self.stride_size = stride_size
-        self.encoder: Model = encoder
-
-        if self.encoder is None:
-            """Create and train a new encoder"""
-            cvae = CVAE(image_size=self.image_size,
-                        channels=self.channels,
-                        latent_dim=self.noise_dim,
-                        kernel_size=self.kernel_size,
-                        stride_size=self.stride_size)
-            self.encoder = cvae.train()
-        self.encoder.summary()
 
         self.filters = [4, 8, 16, 32, 64, 128, 256]
 
         self.generator: Model = self._create_generator()
-        self.generator.summary()
-
-        self.discriminator = self._create_discriminator()
-        self.discriminator.summary()
+        self.discriminator: Model = self._create_discriminator()
 
     def _create_generator(self) -> Model:
         """Create the generator which generates a new image based on the given gauge height"""
@@ -107,7 +92,7 @@ class ReGAN(Model):
                      outputs=[out],
                      name="Discriminator")
 
-    def train(self, dataset, epochs, batch_size):
+    def train(self, images, labels, epochs, batch_size):
         generated_images = []
 
         for epoch in range(epochs):
@@ -117,8 +102,8 @@ class ReGAN(Model):
             min_gen_loss = float("inf")
             min_disc_loss = float("inf")
 
-            for i in range(len(dataset)):
-                next_batch.append(dataset[i])
+            for i in range(len(images)):
+                next_batch.append(images[i])
                 if i % batch_size == 0:
                     gen_loss, disc_loss = self.train_step(np.array(next_batch))
                     min_gen_loss = min(min_gen_loss, gen_loss)
@@ -140,14 +125,14 @@ class ReGAN(Model):
         return generated_images
 
     @tf.function
-    def train_step(self, images):
-        noise = tf.random.normal([self.batch_size, self.noise_dim])
+    def train_step(self, images, labels):
+        encodings = [self.encoder(img) for img in images]
 
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-            generated_images = self.generator(noise, training=True)
+            generated_images = self.generator(encodings, labels, training=True)
 
-            real_output = self.discriminator(images, training=True)
-            fake_output = self.discriminator(generated_images, training=True)
+            real_output = self.discriminator(images, labels, training=True)
+            fake_output = self.discriminator(generated_images, labels, training=True)
 
             generator_loss = self.gen_loss(fake_output)
             discriminator_loss = self.disc_loss(real_output, fake_output)
@@ -182,4 +167,4 @@ class ReGAN(Model):
 
 if __name__ == "__main__":
     gan = ReGAN()
-    # gan.summary()
+    gan.summary()

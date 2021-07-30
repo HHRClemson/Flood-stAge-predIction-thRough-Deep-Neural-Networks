@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import cv2
 import os
 
@@ -7,12 +8,13 @@ from tensorflow.keras import Model
 
 import matplotlib.pyplot as plt
 
-from generate_data.gan import ReGAN
 import generate_data.segmentation as segmentation
+from generate_data.gan import ReGAN
+from generate_data.cvae import CVAE
 
 IMG_WIDTH = 256
 IMG_HEIGHT = 256
-NOISE_DIM = 2048
+NOISE_DIM = 512
 
 
 def _create_segmentations(path):
@@ -50,22 +52,92 @@ def _load_segmentation_data(path):
     return np.array(images)
 
 
-def _train_gan():
-    segmentations = _load_segmentation_data("datasets/new_data/")
-    print(len(segmentations))
-    gan: Model = ReGAN(channels=3,
-                       noise_dim=NOISE_DIM,
-                       batch_size=32)
-    gan.compile(
-        optimizer=tf.keras.optimizers.Adam(),
-        loss="binary_crossentropy"
+def _load_all_images_no_labels(path):
+    images = []
+    dirs = os.listdir(path)
+
+    for dir in dirs:
+        curr_path = path + dir + "/"
+
+        for img_name in sorted(os.listdir(curr_path)):
+            # sort out label files (csv, json, ...)
+            if ".png" not in img_name:
+                continue
+
+            img_path = curr_path + img_name
+            img = cv2.imread(img_path)
+            img = tf.cast(tf.image.resize_with_pad(img, IMG_WIDTH, IMG_HEIGHT), np.uint8) / 255
+            images.append(img)
+
+    return np.array(images)
+
+
+def _train_autoencoder(path) -> Model:
+    images = _load_all_images_no_labels(path)
+    print("Start training the Autoencoder with {} images:".format(len(images)))
+
+    encoder: Model = CVAE()
+    encoder.compile(optimizer=tf.keras.optimizers.Adam(1e-4),
+                    loss="binary_crossentropy")
+
+    encoder.fit(images, epochs=500)
+    encoder.save("saved_models/autoencoder")
+    return encoder
+
+
+def _get_csv_key_from_filename(filename):
+    # remove .png
+    filename = filename[:-4]
+    date, time = filename.split("_")
+    hour, minutes = time.split(":")
+
+    next_quarter = 15 * round(int(minutes) / 15)
+    next_quarter = "0" + str(next_quarter) if next_quarter < 10 else str(next_quarter)
+    if next_quarter == "60":
+        hour = str(int(hour) + 1)
+        next_quarter = "00"
+
+    return "{d}_{h}:{m}".format(d=date, h=hour, m=next_quarter)
+
+
+def _load_webcam_images_with_labels(path):
+    images, labels = [], []
+    files = os.listdir(path)
+    heights = dict(pd.read_csv(path + "labels.csv").to_numpy())
+
+    for f in files:
+        if f == "labels.csv":
+            continue
+
+        img_path = path + f
+        img = cv2.imread(img_path)
+        img = tf.cast(tf.image.resize_with_pad(img, IMG_WIDTH, IMG_HEIGHT), np.uint8) / 255
+        images.append(img)
+
+        csv_key = _get_csv_key_from_filename(f)
+        labels.append(heights[csv_key])
+
+    return np.asarray(images), np.asarray(labels)
+
+
+def _train_gan(encoder: Model, path):
+    images, labels = _load_webcam_images_with_labels(path)
+
+    gan: Model = ReGAN(
+        encoder,
+        channels=3,
+        noise_dim=NOISE_DIM,
+        batch_size=32
     )
+    gan.compile(optimizer=tf.keras.optimizers.Adam(1e-4),
+                loss="binary_crossentropy")
 
     generated_imgs = gan.train(
-        segmentations,
+        images, labels,
         epochs=10,
         batch_size=16,
     )
+    gan.save("saved_models/GAN")
 
     generated_imgs.append(gan(tf.random.normal([16, NOISE_DIM])))
 
@@ -83,5 +155,5 @@ def _train_gan():
 
 
 if __name__ == "__main__":
-    _train_gan()
-    # _create_segmentations("datasets/new_data/Shamrock/")
+    autoencoder: Model = _train_autoencoder("datasets/webcam_images/")
+    _train_gan(autoencoder, "datasets/webcam_images/Shamrock/")
