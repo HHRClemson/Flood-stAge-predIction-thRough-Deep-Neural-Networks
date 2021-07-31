@@ -14,7 +14,8 @@ from generate_data.cvae import CVAE
 
 IMG_WIDTH = 256
 IMG_HEIGHT = 256
-NOISE_DIM = 512
+LATENT_DIM = 512
+ADAM_LEARNING_RATE = 1e-4
 
 
 def _create_segmentations(path):
@@ -76,13 +77,13 @@ def _train_autoencoder(path) -> Model:
     images = _load_all_images_no_labels(path)
     print("Start training the Autoencoder with {} images:".format(len(images)))
 
-    encoder: Model = CVAE()
-    encoder.compile(optimizer=tf.keras.optimizers.Adam(1e-4),
+    autoencoder: Model = CVAE()
+    autoencoder.compile(optimizer=tf.keras.optimizers.Adam(ADAM_LEARNING_RATE),
                     loss="binary_crossentropy")
 
-    encoder.fit(images, epochs=500)
-    encoder.save("saved_models/autoencoder")
-    return encoder
+    autoencoder.fit(images, epochs=500)
+    autoencoder.save("saved_models/autoencoder")
+    return autoencoder
 
 
 def _get_csv_key_from_filename(filename):
@@ -126,10 +127,10 @@ def _train_gan(encoder: Model, path):
     gan: Model = ReGAN(
         encoder,
         channels=3,
-        noise_dim=NOISE_DIM,
+        noise_dim=LATENT_DIM,
         batch_size=32
     )
-    gan.compile(optimizer=tf.keras.optimizers.Adam(1e-4),
+    gan.compile(optimizer=tf.keras.optimizers.Adam(ADAM_LEARNING_RATE),
                 loss="binary_crossentropy")
 
     generated_imgs = gan.train(
@@ -139,7 +140,7 @@ def _train_gan(encoder: Model, path):
     )
     gan.save("saved_models/GAN")
 
-    generated_imgs.append(gan(tf.random.normal([16, NOISE_DIM])))
+    generated_imgs.append(gan(tf.random.normal([16, LATENT_DIM])))
 
     for i, generated in enumerate(generated_imgs):
         fig = plt.figure(figsize=(4, 4))
@@ -155,5 +156,8 @@ def _train_gan(encoder: Model, path):
 
 
 if __name__ == "__main__":
+    print("\n\n##START AUTOENCODER TRAINING##\n\n")
     autoencoder: Model = _train_autoencoder("datasets/webcam_images/")
+
+    print("\n\n##START GAN TRAINING##\n\n")
     _train_gan(autoencoder, "datasets/webcam_images/Shamrock/")

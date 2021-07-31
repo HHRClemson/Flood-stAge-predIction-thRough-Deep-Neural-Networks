@@ -24,12 +24,13 @@ class CVAE(Model):
         self.stride_size = stride_size
 
         self.filters = [8, 16, 32, 64, 128]
+        adam_learning_rate = 1e-4
 
         self.encoder: Model = self._create_encoder()
-        self.enc_optimizer = tf.keras.optimizers.Adam(1e-4, loss="binary_crossentropy")
+        self.enc_optimizer = tf.keras.optimizers.Adam(adam_learning_rate)
 
         self.decoder: Model = self._create_decoder()
-        self.dec_optimizer = tf.keras.optimizers.Adam(1e-4, loss="binary_crossentropy")
+        self.dec_optimizer = tf.keras.optimizers.Adam(adam_learning_rate)
 
         self.loss_function = tf.keras.losses.BinaryCrossentropy()
 
@@ -39,37 +40,37 @@ class CVAE(Model):
         modify the gauge height.
         The latent space will be the input for the generator
         """
-        encoder = models.Sequential(name="Encoder")
-        encoder.add(layers.InputLayer(input_shape=(self.image_size, self.image_size, self.channels)))
+        image_input = layers.Input(shape=(self.image_size, self.image_size, self.channels))
+        x = image_input
 
         for f in self.filters:
-            encoder.add(layers.Conv2D(
+            x = layers.Conv2D(
                 filters=f, kernel_size=self.kernel_size,
-                strides=self.stride_size, padding="same"))
-            encoder.add(layers.Activation("relu"))
+                strides=self.stride_size, padding="same")(x)
+            x = layers.Activation("relu")(x)
 
-        encoder.add(layers.Flatten())
-        encoder.add(layers.Dense(self.latent_dim))
-        return encoder
+        x = layers.Flatten()(x)
+        x = layers.Dense(self.latent_dim)(x)
+
+        return Model(inputs=image_input, outputs=x, name="Encoder")
 
     def _create_decoder(self) -> Model:
         """Create a decoder as an discriminator for the encoder training"""
-        decoder = models.Sequential(name="Decoder")
-        decoder.add(layers.InputLayer(input_shape=self.latent_dim))
-        decoder.add(layers.Dense(16 * 16 * 64))
-        decoder.add(layers.Activation("relu"))
-        decoder.add(layers.Reshape(target_shape=(16, 16, 64)))
+        latent_input = layers.Input(shape=(self.latent_dim,))
+        x = layers.Dense(8 * 8 * 64)(latent_input)
+        x = layers.Activation("relu")(x)
+        x = layers.Reshape(target_shape=(8, 8, 64))(x)
 
         for f in reversed(self.filters):
-            decoder.add(layers.Conv2DTranspose(
+            x = layers.Conv2DTranspose(
                 filters=f, kernel_size=self.kernel_size,
-                strides=self.stride_size, padding="same"))
-            decoder.add(layers.Activation("relu"))
+                strides=self.stride_size, padding="same")(x)
+            x = layers.Activation("relu")(x)
 
-        decoder.add(layers.Conv2DTranspose(
+        x = layers.Conv2DTranspose(
             filters=1, kernel_size=self.kernel_size,
-            strides=1, padding="same"))
-        return decoder
+            strides=1, padding="same")(x)
+        return Model(inputs=latent_input, outputs=x, name="Decoder")
 
     def train(self) -> Model:
         """Train the encoder"""

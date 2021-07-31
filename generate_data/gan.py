@@ -1,11 +1,17 @@
 import numpy as np
 import time
+import random
 
 import tensorflow as tf
 from tensorflow.keras import layers, Model
 
 
 class ReGAN(Model):
+    """
+    Create a Continuous Conditional GAN for image generation to modify the gauge height
+    of images of rivers. Using the label input mechanism from Ding et al.
+    https://arxiv.org/abs/2011.07466
+    """
 
     def __init__(self,
                  encoder,
@@ -98,22 +104,28 @@ class ReGAN(Model):
         for epoch in range(epochs):
             start = time.time()
 
-            next_batch = []
             min_gen_loss = float("inf")
             min_disc_loss = float("inf")
 
-            for i in range(len(images)):
-                next_batch.append(images[i])
-                if i % batch_size == 0:
-                    gen_loss, disc_loss = self.train_step(np.array(next_batch))
-                    min_gen_loss = min(min_gen_loss, gen_loss)
-                    min_disc_loss = min(min_disc_loss, disc_loss)
-                    next_batch = []
+            for batch_number in range(int(np.ceil(len(images) / batch_size))):
+                start = batch_number * batch_size
+                end = start + batch_size
+                gen_loss, disc_loss = self.train_step(np.array(images[start:end], labels[start:end]))
+                min_gen_loss = min(min_gen_loss, gen_loss)
+                min_disc_loss = min(min_disc_loss, disc_loss)
 
             # generate 10 times pictures based on the generator trained to this epoch
             # to visualize the improvements and find the sweet epoch point
             if epoch % (epochs / 10) == 0:
-                generated_images.append(self.call(tf.random.normal([16, self.noise_dim])))
+                index = random.randint(0, len(images))
+
+                image = images[index]
+                correct_label = labels[index]
+                new_labels = [correct_label + i * correct_label / 5 for i in range(5)]
+                new_labels.extend([correct_label - i * correct_label / 5 for i in range(5)])
+
+                gan_input = [(image, label) for label in new_labels]
+                generated_images.append(self.call(gan_input))
 
             print('Time for epoch {e}/{ne} is {t} sec. Generator loss: {gl}, Discriminiator loss: {dl}'
                   .format(e=epoch + 1,
@@ -166,5 +178,5 @@ class ReGAN(Model):
 
 
 if __name__ == "__main__":
-    gan = ReGAN()
+    gan = ReGAN(None)
     gan.summary()
