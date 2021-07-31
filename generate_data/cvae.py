@@ -32,7 +32,11 @@ class CVAE(Model):
         self.decoder: Model = self._create_decoder()
         self.dec_optimizer = tf.keras.optimizers.Adam(adam_learning_rate)
 
-        self.loss_function = tf.keras.losses.BinaryCrossentropy()
+        self.reconstruction_loss_tracker = tf.keras.metrics.Mean(name="reconstruction_loss")
+
+    @property
+    def metrics(self):
+        return [self.reconstruction_loss_tracker]
 
     def _create_encoder(self) -> Model:
         """
@@ -78,20 +82,20 @@ class CVAE(Model):
 
     @tf.function
     def train_step(self, image):
-        """
-        We train the encoder by maximizing the evidence lower bound (ELBO) on the
-        marginal log-likelihood.
-        """
         with tf.GradientTape() as enc_tape, tf.GradientTape() as dec_tape:
             reconstructed = self.decoder(self.encoder(image, training=True), training=True)
-            loss = self.loss_function(image, reconstructed)
+
+            loss = tf.reduce_mean(tf.reduce_sum(
+                tf.keras.losses.binary_crossentropy(image, reconstructed)))
 
         enc_grads = enc_tape.gradient(loss, self.encoder.trainable_variables)
-        self.encoder.apply_gradients(zip(enc_grads, self.encoder.trainable_variables))
+        self.enc_optimizer.apply_gradients(zip(enc_grads, self.encoder.trainable_variables))
 
         dec_grads = dec_tape.gradient(loss, self.decoder.trainable_variables)
-        self.decoder.apply_gradients(zip(dec_grads, self.decoder.trainable_variables))
-        return loss
+        self.dec_optimizer.apply_gradients(zip(dec_grads, self.decoder.trainable_variables))
+
+        self.reconstruction_loss_tracker.update_state(loss)
+        return {"reconstruction_loss": self.reconstruction_loss_tracker.result()}
 
     def call(self, inputs, training=None, mask=None):
         for img in inputs:
