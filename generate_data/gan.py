@@ -4,6 +4,7 @@ import random
 
 import tensorflow as tf
 from tensorflow.keras import layers, Model
+import tensorflow.keras.backend as K
 
 
 class ReGAN(Model):
@@ -33,9 +34,13 @@ class ReGAN(Model):
         self.stride_size = stride_size
 
         self.filters = [4, 8, 16, 32, 64, 128, 256]
+        adam_learning_rate = 1e-4
 
         self.generator: Model = self._create_generator()
+        self.gen_optimizer = tf.keras.optimizers.Adam(adam_learning_rate)
+
         self.discriminator: Model = self._create_discriminator()
+        self.disc_optimizer = tf.keras.optimizers.Adam(adam_learning_rate)
 
     def _create_generator(self) -> Model:
         """Create the generator which generates a new image based on the given gauge height"""
@@ -67,6 +72,15 @@ class ReGAN(Model):
                      outputs=[x],
                      name="Generator")
 
+    @staticmethod
+    def _generator_loss(disc_real_output, disc_gen_output):
+        """
+        Use the Wasserstein GAN loss function.
+        See https://arxiv.org/abs/1701.07875
+        """
+        return K.mean(abs(disc_real_output * disc_gen_output))
+
+
     def _create_discriminator(self) -> Model:
         """Create a discriminator to judge the created image with its corresponding gauge height"""
         image_input = layers.Input(shape=(self.image_size, self.image_size, self.channels))
@@ -90,13 +104,23 @@ class ReGAN(Model):
         for a continuous conditional GAN (CcGAN).
         See here: https://arxiv.org/pdf/2011.07466.pdf
         """
-        inner_product = tf.tensordot(x, gauge_height_input, axes=1)
-        x = layers.Dense(1)(x)
-        out = tf.add(x, inner_product)
+        # print(x.shape, gauge_height_input.shape)
+        # inner_product = tf.tensordot(x, gauge_height_input, axes=1)
+        # x = layers.Dense(1)(x)
+        # out = tf.add(x, inner_product)
+        out = tf.add(x, gauge_height_input)
 
         return Model(inputs=[image_input, gauge_height_input],
                      outputs=[out],
                      name="Discriminator")
+
+    @staticmethod
+    def _discriminator_loss(disc_real_output, disc_fake_output):
+        """
+        Use the Wasserstein GAN loss function.
+        See https://arxiv.org/abs/1701.07875
+        """
+        return K.mean(abs(disc_real_output - disc_fake_output))
 
     def train(self, images, labels, epochs, batch_size):
         generated_images = []
@@ -110,7 +134,8 @@ class ReGAN(Model):
             for batch_number in range(int(np.ceil(len(images) / batch_size))):
                 start = batch_number * batch_size
                 end = start + batch_size
-                gen_loss, disc_loss = self.train_step(np.array(images[start:end], labels[start:end]))
+                gen_loss, disc_loss = self.train_step(images[start:end], labels[start:end])
+                print(gen_loss, disc_loss)
                 min_gen_loss = min(min_gen_loss, gen_loss)
                 min_disc_loss = min(min_disc_loss, disc_loss)
 
@@ -138,16 +163,16 @@ class ReGAN(Model):
 
     @tf.function
     def train_step(self, images, labels):
-        encodings = [self.encoder(img) for img in images]
+        encodings = self.encoder(images)
 
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-            generated_images = self.generator(encodings, labels, training=True)
+            generated_images = self.generator([encodings, labels], training=True)
 
-            real_output = self.discriminator(images, labels, training=True)
-            fake_output = self.discriminator(generated_images, labels, training=True)
+            real_output = self.discriminator([images, labels], training=True)
+            fake_output = self.discriminator([generated_images, labels], training=True)
 
-            generator_loss = self.gen_loss(fake_output)
-            discriminator_loss = self.disc_loss(real_output, fake_output)
+            generator_loss = self._generator_loss(real_output, fake_output)
+            discriminator_loss = self._discriminator_loss(real_output, fake_output)
 
         gen_grads = gen_tape.gradient(generator_loss, self.generator.trainable_variables)
         self.gen_optimizer.apply_gradients(zip(gen_grads, self.generator.trainable_variables))

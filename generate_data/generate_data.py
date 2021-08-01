@@ -48,9 +48,9 @@ def _load_segmentation_data(path):
             continue
         img = cv2.imread(path + img_name)
         img = tf.cast(tf.image.resize_with_pad(img, IMG_WIDTH, IMG_HEIGHT), np.uint8) / 255
-        #img = tf.image.rgb_to_grayscale(img)
+        # img = tf.image.rgb_to_grayscale(img)
         images.append(img)
-    return np.array(images)
+    return np.asarray(images)
 
 
 def _load_all_images_no_labels(path):
@@ -70,19 +70,20 @@ def _load_all_images_no_labels(path):
             img = tf.cast(tf.image.resize_with_pad(img, IMG_WIDTH, IMG_HEIGHT), np.uint8) / 255
             images.append(img)
 
-    return np.array(images)
+    return np.asarray(images)
 
 
 def _train_autoencoder(path) -> Model:
     images = _load_all_images_no_labels(path)
-    print("Start training the Autoencoder with {} images:".format(len(images)))
+    print("Start training the Autoencoder with {0} images:".format(len(images)))
 
     autoencoder: Model = CVAE()
     autoencoder.compile(optimizer=tf.keras.optimizers.Adam(ADAM_LEARNING_RATE),
-                    loss="binary_crossentropy")
+                        loss="binary_crossentropy")
 
-    autoencoder.fit(images, epochs=500)
-    autoencoder.save("saved_models/autoencoder")
+    history = autoencoder.fit(images, epochs=1)
+    #autoencoder.save("saved_models/autoencoder")
+
     return autoencoder
 
 
@@ -123,6 +124,7 @@ def _load_webcam_images_with_labels(path):
 
 def _train_gan(encoder: Model, path):
     images, labels = _load_webcam_images_with_labels(path)
+    print("Start training the GAN with {0} images:".format(len(images)))
 
     gan: Model = ReGAN(
         encoder,
@@ -135,7 +137,7 @@ def _train_gan(encoder: Model, path):
 
     generated_imgs = gan.train(
         images, labels,
-        epochs=10,
+        epochs=1,
         batch_size=16,
     )
     gan.save("saved_models/GAN")

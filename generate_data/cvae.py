@@ -15,7 +15,7 @@ class CVAE(Model):
                  kernel_size=3,
                  stride_size=2,
                  **kwargs):
-        super(CVAE, self).__init__(name="VAE", **kwargs)
+        super(CVAE, self).__init__(name="CVAE", **kwargs)
 
         self.image_size = image_size
         self.channels = channels
@@ -76,10 +76,6 @@ class CVAE(Model):
             strides=1, padding="same")(x)
         return Model(inputs=latent_input, outputs=x, name="Decoder")
 
-    def train(self) -> Model:
-        """Train the encoder"""
-        return self.encoder
-
     @tf.function
     def train_step(self, image):
         with tf.GradientTape() as enc_tape, tf.GradientTape() as dec_tape:
@@ -98,8 +94,7 @@ class CVAE(Model):
         return {"reconstruction_loss": self.reconstruction_loss_tracker.result()}
 
     def call(self, inputs, training=None, mask=None):
-        for img in inputs:
-            yield self.encoder(img)
+        return self.encoder(inputs)
 
     def get_config(self):
         config = super(CVAE, self).get_config()
