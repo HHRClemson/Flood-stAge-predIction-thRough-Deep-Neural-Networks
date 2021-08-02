@@ -82,7 +82,9 @@ def _train_autoencoder(path) -> Model:
                         loss="binary_crossentropy")
 
     history = autoencoder.fit(images, epochs=1)
-    #autoencoder.save("saved_models/autoencoder")
+    encoder: Model = autoencoder.encoder
+    encoder.summary()
+    encoder.save("saved_models/encoder")
 
     return autoencoder
 
@@ -140,26 +142,34 @@ def _train_gan(encoder: Model, path):
         epochs=1,
         batch_size=16,
     )
-    gan.save("saved_models/GAN")
 
-    generated_imgs.append(gan(tf.random.normal([16, LATENT_DIM])))
+    generator: Model = gan.generator
+    generator.save("saved_models/generator")
 
-    for i, generated in enumerate(generated_imgs):
-        fig = plt.figure(figsize=(4, 4))
 
-        for j in range(len(generated)):
-            fig.add_subplot(4, 4, j + 1)
-            plt.imshow(generated[j])
-            plt.axis("off")
+def predict_on_learned_model():
+    encoder: Model = tf.keras.models.load_model("generate_data/saved_models/encoder")
+    generator: Model = tf.keras.models.load_model("generate_data/saved_models/generator")
 
-        file_name = "gan-results/generated_images{}.svg".format(i)
-        plt.savefig(file_name, format="svg", dpi=1200)
-        plt.close()
+    images, labels = _load_webcam_images_with_labels("datasets/webcam_images/Shamrock/")
+    images = images[:10]
+    labels = labels[:10]
+    #labels = [label + 3 for label in labels]
+
+    #encoder.summary()
+    #generator.summary()
+
+    generated_images = generator([encoder(images), labels])
+
+    for img in generated_images:
+        plt.imshow(img * 255)
+        plt.show()
 
 
 if __name__ == "__main__":
-    print("\n\n##START AUTOENCODER TRAINING##\n\n")
-    autoencoder: Model = _train_autoencoder("datasets/webcam_images/")
+    #print("\n\n##START AUTOENCODER TRAINING##\n\n")
+    #autoencoder: Model = _train_autoencoder("datasets/webcam_images/")
 
-    print("\n\n##START GAN TRAINING##\n\n")
-    _train_gan(autoencoder, "datasets/webcam_images/Shamrock/")
+    #print("\n\n##START GAN TRAINING##\n\n")
+    #_train_gan(autoencoder, "datasets/webcam_images/Shamrock/")
+    predict_on_learned_model()

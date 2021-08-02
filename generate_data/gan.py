@@ -78,8 +78,7 @@ class ReGAN(Model):
         Use the Wasserstein GAN loss function.
         See https://arxiv.org/abs/1701.07875
         """
-        return K.mean(abs(disc_real_output * disc_gen_output))
-
+        return K.mean(disc_real_output * disc_gen_output)
 
     def _create_discriminator(self) -> Model:
         """Create a discriminator to judge the created image with its corresponding gauge height"""
@@ -120,7 +119,7 @@ class ReGAN(Model):
         Use the Wasserstein GAN loss function.
         See https://arxiv.org/abs/1701.07875
         """
-        return K.mean(abs(disc_real_output - disc_fake_output))
+        return tf.reduce_mean(disc_fake_output) - tf.reduce_mean(disc_real_output)
 
     def train(self, images, labels, epochs, batch_size):
         generated_images = []
@@ -135,7 +134,6 @@ class ReGAN(Model):
                 start = batch_number * batch_size
                 end = start + batch_size
                 gen_loss, disc_loss = self.train_step(images[start:end], labels[start:end])
-                print(gen_loss, disc_loss)
                 min_gen_loss = min(min_gen_loss, gen_loss)
                 min_disc_loss = min(min_disc_loss, disc_loss)
 
