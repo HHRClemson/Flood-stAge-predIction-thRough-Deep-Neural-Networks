@@ -1,45 +1,33 @@
-    original  predictions
-0       1.28     1.398452
-1       1.29     1.202638
-2       1.29     1.289286
-3       1.27     1.177057
-4       1.27     1.062000
-5       1.27     1.135581
-6       1.27     1.122853
-7       1.27     1.103478
-8       1.27     1.216863
-9       1.30     1.287851
-10      1.27     0.916438
-11      1.30     1.174824
-12      1.31     1.546012
-13      1.27     1.217844
-14      1.28     1.195217
-15      1.27     1.063221
-16      1.28     1.179257
-17      1.27     1.267218
-18      1.30     1.160829
-19      1.30     1.329311
-20      1.27     1.195153
-21      3.45     3.193060
-22      1.28     1.345547
-23      1.29     0.886503
-24      1.32     1.347459
-25      1.26     1.433826
-26      1.27     1.373465
-27      1.30     1.285167
-28      1.29     1.285750
-29      1.28     1.217699
-30      1.28     1.483814
-31      1.27     1.484956
-32      1.27     1.231957
-33      1.29     1.319912
-34      1.27     1.074699
-35      1.26     1.115277
-36      1.29     1.457160
-37      1.28     1.345547
-38      1.29     1.426410
-39      1.33     1.289016
-40      1.30     1.273878
-41      1.26     1.445046
-42      1.27     1.154214
-Avg error:  [0.11865325]
+Shamrock:
+https://www2.usgs.gov/water/southatlantic/nc/rivercam/webcam-briar_cr_shamrock_dr.html
+Only CNN:
+Avg relative error: [0.12247922]
+Median relative error: [0.06640069]
+Max relative error: [0.48742872]
+
+CNN with cropping to 512x512:
+Avg relative error: [0.01347036]
+Median relative error: [0.00972598]
+Max relative error: [0.04119113]
+
+CNN with segmentation:
+Avg relative error: [0.01277401]
+Median relative error: [0.00660755]
+Max relative error: [0.099943]
+
+Chattahoochee River:
+https://www2.usgs.gov/water/southatlantic/ga/rivercam/webcam-columbus.html
+Only CNN:
+Avg relative error: [0.02266149]
+Median relative error: [0.01751239]
+Max relative error: [0.21014903]
+
+CNN with cropping to 512x512:
+Avg relative error: [0.02298964]
+Median relative error: [0.01215438]
+Max relative error: [0.2460539]
+
+CNN with segmentation:
+Avg relative error: [0.03363715]
+Median relative error: [0.02403095]
+Max relative error: [0.20712672]
