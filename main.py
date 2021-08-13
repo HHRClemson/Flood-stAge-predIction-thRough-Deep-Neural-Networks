@@ -1,6 +1,6 @@
 import argparse
 
-import predict_depth.predict_water_depth as predicter
+import estimate_depth.estimate_water_depth as estimator
 
 
 if __name__ == "__main__":
@@ -11,4 +11,4 @@ if __name__ == "__main__":
     dataset_path = "./datasets/webcam_images/Shamrock/"
     #dataset_path = "./datasets/webcam_images/ChattahoocheeRiver/"
 
-    predicter.train_and_predict(dataset_path, round_to=5, bayesian=args.bayes)
+    estimator.train_and_predict(dataset_path, round_to=5, bayesian=args.bayes)
