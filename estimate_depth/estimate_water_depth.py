@@ -9,7 +9,7 @@ from tensorflow.keras import Model
 import matplotlib.pyplot as plt
 
 import generate_data.segmentation as segmentation
-import estimate_depth.cnn as cnn
+import estimate_depth.models.cnn as cnn
 #import estimate_depth.bcnn as bcnn
 
 IMG_WIDTH = 512
