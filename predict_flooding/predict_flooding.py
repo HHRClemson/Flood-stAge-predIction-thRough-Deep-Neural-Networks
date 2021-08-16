@@ -1,11 +1,12 @@
-import os
-import numpy as np
 import pandas as pd
 
 import tensorflow as tf
-from tensorflow.keras import models, Model, layers
+from tensorflow.keras import Model
 
 import matplotlib.pyplot as plt
+
+from predict_flooding.window_generator import SlidingWindowGenerator
+from predict_flooding.models import *
 
 
 def train_and_predict(path):
@@ -20,6 +21,13 @@ def train_and_predict(path):
 
     train_df = (train_df - train_mean) / train_std
     test_df = (test_df - train_mean) / train_std
+
+    window_generator: SlidingWindowGenerator = SlidingWindowGenerator(
+        input_width=100, label_width=1, shift=0, train_df=train_df, test_df=test_df)
+
+    train_ds = window_generator.train_dataset
+    test_ds = window_generator.test_dataset
+
 
 
 if __name__ == "__main__":
