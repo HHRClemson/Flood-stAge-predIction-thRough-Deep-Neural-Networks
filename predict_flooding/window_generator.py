@@ -72,7 +72,7 @@ class SlidingWindowGenerator:
         return ds
 
     def __str__(self):
-        return '\n'.join([
+        return "\n".join([
             f'Total window size: {self.total_window_size}',
             f'Input indices: {self.input_indices}',
             f'Label indices: {self.label_indices}',
