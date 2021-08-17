@@ -39,15 +39,17 @@ class SlidingWindowGenerator:
 
     @property
     def train_dataset(self):
+        """Generate the training dataset."""
         return self.make_dataset(self.train_df)
 
     @property
     def test_dataset(self):
+        """Generate the testing dataset."""
         return self.make_dataset(self.test_df)
 
     @property
     def plot_dataset(self):
-        """Get and cache an example batch of inputs, labels for plotting."""
+        """Extract one batch of the training dataset for plotting and visualization."""
         result = getattr(self, '_plot_dataset', None)
         if result is None:
             result = next(iter(self.train_dataset))
@@ -80,7 +82,7 @@ class SlidingWindowGenerator:
         ds = ds.map(self.split_window)
         return ds
 
-    def plot(self, model=None, plot_col='T (degC)', max_subplots=3):
+    def plot(self, model: tf.keras.Model, plot_col="height", max_subplots=3):
         """Plot one batch of the training dataset for visual results."""
         inputs, labels = self.plot_dataset
         plt.figure(figsize=(12, 8))
@@ -103,16 +105,18 @@ class SlidingWindowGenerator:
 
             plt.scatter(self.label_indices, labels[n, :, label_col_index],
                         edgecolors='k', label='Labels', c='#2ca02c', s=64)
-            if model is not None:
-                predictions = model(inputs)
-                plt.scatter(self.label_indices, predictions[n, :, label_col_index],
-                            marker='X', edgecolors='k', label='Predictions',
-                            c='#ff7f0e', s=64)
+
+            predictions = model(inputs)
+            plt.scatter(self.label_indices, predictions[n, :, label_col_index],
+                        marker='X', edgecolors='k', label='Predictions',
+                        c='#ff7f0e', s=64)
 
             if n == 0:
                 plt.legend()
 
         plt.xlabel('Time [h]')
+        plt.savefig("{}-model.png".format(model.name))
+        plt.show()
 
     def __str__(self):
         return "\n".join([

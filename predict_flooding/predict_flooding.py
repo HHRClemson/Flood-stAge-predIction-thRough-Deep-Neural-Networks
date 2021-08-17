@@ -1,64 +1,70 @@
 import pandas as pd
-
 import tensorflow as tf
-from tensorflow.keras import Model
+from tensorflow.keras import models, Model, layers
 
-import matplotlib.pyplot as plt
-
-from predict_flooding.window_generator import SlidingWindowGenerator
 from predict_flooding.models import *
+from predict_flooding.window_generator import SlidingWindowGenerator
 
 OUT_STEPS = 10
 
 
-def _evaluate_baseline(_, test_ds, show_summary=False):
+def _evaluate_baseline(window: SlidingWindowGenerator,
+                       show_summary=False):
     # Since the baseline model does not predict anything, we do not need the training ds
     model: Model = baseline.Baseline(label_index=1)
-    model.compile(loss=tf.losses.MeanSquaredError(),
-                  metrics=[tf.metrics.MeanAbsoluteError()])
-    performance = model.evaluate(test_ds, show_summary)
-    return performance
-
-
-def _evaluate_dense(train_ds, test_ds, show_summary=False):
-    model: Model = dense.Dense()
-    model.summary()
-
-    _, performance = _run_model(model, train_ds, test_ds, show_summary)
-    return performance
-
-
-def _evaluate_cnn(train_ds, test_ds, show_summary=False):
-    model: Model = cnn.CNN(out_steps=OUT_STEPS)
-    print("\n\nCREATED MODEL\n\n")
-    _, performance = _run_model(model, train_ds, test_ds, show_summary)
-    return performance
-
-
-def _evaluate_lstm(train_ds, test_ds, show_summary=False):
-    model: Model = lstm.LSTM()
-    _, performance = _run_model(model, train_ds, test_ds, show_summary)
-    return performance
-
-
-def _run_model(model: Model, train_ds, test_ds,
-               num_epochs=50, patience=5, show_summary=False):
-    early_stopping = tf.keras.callbacks.EarlyStopping(
-        monitor="loss", patience=patience, mode="min")
-
     if show_summary:
         model.summary()
 
     model.compile(loss=tf.losses.MeanSquaredError(),
                   metrics=[tf.metrics.MeanAbsoluteError()])
+    performance = model.evaluate(window.test_dataset)
+    window.plot(model)
+    return performance
+
+
+def _evaluate_dense(window: SlidingWindowGenerator,
+                    show_summary=False):
+    model: Model = dense.Dense()
+    _, performance = _run_model(model, window.train_dataset, window.test_dataset,
+                                show_summary=show_summary)
+    window.plot(model)
+    return performance
+
+
+def _evaluate_cnn(window: SlidingWindowGenerator,
+                  show_summary=False):
+    model: Model = cnn.CNN(out_steps=1)
+    _, performance = _run_model(model, window.train_dataset, window.test_dataset,
+                                show_summary=show_summary)
+    window.plot(model)
+    return performance
+
+
+def _evaluate_lstm(window: SlidingWindowGenerator,
+                   show_summary=False):
+    model: Model = lstm.LSTM()
+    _, performance = _run_model(model, window.train_dataset, window.test_dataset,
+                                show_summary=show_summary)
+    window.plot(model)
+    return performance
+
+
+def _run_model(model: Model, train_ds, test_ds,
+               num_epochs=50, patience=5, show_summary=False):
+    if show_summary:
+        model.summary()
+
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor="loss", patience=patience, mode="min")
+
+    model.compile(loss=tf.losses.MeanSquaredError(),
+                  optimizer=tf.optimizers.Adam(),
+                  metrics=[tf.metrics.MeanAbsoluteError()])
 
     history = model.fit(train_ds, epochs=num_epochs, callbacks=[early_stopping])
     performance = model.evaluate(test_ds)
+
     return history, performance
-
-
-def _plot_results(results):
-    pass
 
 
 def train_and_predict(path):
@@ -77,32 +83,27 @@ def train_and_predict(path):
     print(train_mean)
     print(train_std)
 
-    train_df = (train_df - train_mean) / train_std
-    test_df = (test_df - train_mean) / train_std
+    # train_df = (train_df - train_mean) / train_std
+    # test_df = (test_df - train_mean) / train_std
     print(train_df.head())
     print(test_df.head())
 
     window_generator: SlidingWindowGenerator = SlidingWindowGenerator(
-        input_width=100, label_width=1, shift=OUT_STEPS,
+        input_width=100, label_width=1, shift=10,
         train_df=train_df, test_df=test_df,
         label_columns=["height"])
     print(window_generator)
 
-    train_ds = window_generator.train_dataset
-    print(train_ds)
-    test_ds = window_generator.test_dataset
-    print(test_ds)
+    baseline_performance = _evaluate_baseline(window_generator, show_summary=False)
+    print("EVALUATED BASELINE:", baseline_performance)
 
-    #baseline_performance = _evaluate_baseline(train_ds, test_ds, show_summary=True)
-    #print("EVALUATED BASELINE:", baseline_performance)
+    dense_performance = _evaluate_dense(window_generator, show_summary=False)
+    print("EVALUATED DENSE:", dense_performance)
 
-    #dense_performance = _evaluate_dense(train_ds, test_ds, show_summary=True)
-    #print("EVALUATED DENSE:", dense_performance)
-
-    cnn_performance = _evaluate_cnn(train_ds, test_ds, show_summary=True)
+    cnn_performance = _evaluate_cnn(window_generator, show_summary=False)
     print("EVALUATED CNN:", cnn_performance)
 
-    lstm_performance = _evaluate_lstm(train_ds, test_ds, show_summary=True)
+    lstm_performance = _evaluate_lstm(window_generator, show_summary=False)
     print("EVALUATED LSTM:", lstm_performance)
 
     print("\n".join([
@@ -111,9 +112,6 @@ def train_and_predict(path):
         "CNN performance: {}".format(cnn_performance),
         "LSTM performance: {}".format(lstm_performance)
     ]))
-
-    _plot_results([baseline_performance, dense_performance,
-                   cnn_performance, lstm_performance])
 
 
 if __name__ == "__main__":

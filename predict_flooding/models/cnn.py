@@ -1,4 +1,3 @@
-import tensorflow as tf
 from tensorflow.keras import models, Model, layers
 
 
@@ -14,10 +13,11 @@ class CNN(Model):
 
     def _create_model(self) -> Model:
         model = models.Sequential()
-        model.add(layers.Lambda(lambda x: x[:, -self.conv_width, :]))
-        model.add(layers.Conv1D(256, activation="relu", kernel_size=self.conv_width))
-        model.add(layers.Dense(self.out_steps, kernel_initializer=tf.initializers.zeros()))
-        model.add(layers.Reshape([self.out_steps, 1]))
+        model.add(layers.Conv1D(filters=32,
+                                kernel_size=(self.conv_width,),
+                                activation="relu"))
+        model.add(layers.Dense(32, activation="relu"))
+        model.add(layers.Dense(1))
         return model
 
     def call(self, inputs, training=None, mask=None):
