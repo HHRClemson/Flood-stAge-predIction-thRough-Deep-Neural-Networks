@@ -11,6 +11,7 @@ class LSTM(Model):
     def _create_model() -> Model:
         model = models.Sequential()
         model.add(layers.LSTM(64, return_sequences=True))
+        model.add(layers.LSTM(64, return_sequences=True))
         model.add(layers.Dense(1))
         return model
 

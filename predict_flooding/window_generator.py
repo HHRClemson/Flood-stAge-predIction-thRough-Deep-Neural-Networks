@@ -1,5 +1,5 @@
 import numpy as np
-
+import matplotlib.pyplot as plt
 import tensorflow as tf
 
 
@@ -10,7 +10,7 @@ class SlidingWindowGenerator:
     2) time offset between input and label windows
     3) which features are used as inputs, labels, or both
 
-    We follow the tensorflow tutorial about time series forecasting:
+    We adapt the TensorFlow tutorial about time series forecasting:
     https://www.tensorflow.org/tutorials/structured_data/time_series
     """
 
@@ -45,6 +45,15 @@ class SlidingWindowGenerator:
     def test_dataset(self):
         return self.make_dataset(self.test_df)
 
+    @property
+    def plot_dataset(self):
+        """Get and cache an example batch of inputs, labels for plotting."""
+        result = getattr(self, '_plot_dataset', None)
+        if result is None:
+            result = next(iter(self.train_dataset))
+            self._plot_dataset = result
+        return result
+
     def split_window(self, features):
         inputs = features[:, self.input_slice, :]
         labels = features[:, self.labels_slice, :]
@@ -70,6 +79,40 @@ class SlidingWindowGenerator:
 
         ds = ds.map(self.split_window)
         return ds
+
+    def plot(self, model=None, plot_col='T (degC)', max_subplots=3):
+        """Plot one batch of the training dataset for visual results."""
+        inputs, labels = self.plot_dataset
+        plt.figure(figsize=(12, 8))
+        plot_col_index = self.column_indices[plot_col]
+        max_n = min(max_subplots, len(inputs))
+
+        for n in range(max_n):
+            plt.subplot(max_n, 1, n + 1)
+            plt.ylabel(f'{plot_col} [normed]')
+            plt.plot(self.input_indices, inputs[n, :, plot_col_index],
+                     label='Inputs', marker='.', zorder=-10)
+
+            if self.label_columns:
+                label_col_index = self.label_columns_indices.get(plot_col, None)
+            else:
+                label_col_index = plot_col_index
+
+            if label_col_index is None:
+                continue
+
+            plt.scatter(self.label_indices, labels[n, :, label_col_index],
+                        edgecolors='k', label='Labels', c='#2ca02c', s=64)
+            if model is not None:
+                predictions = model(inputs)
+                plt.scatter(self.label_indices, predictions[n, :, label_col_index],
+                            marker='X', edgecolors='k', label='Predictions',
+                            c='#ff7f0e', s=64)
+
+            if n == 0:
+                plt.legend()
+
+        plt.xlabel('Time [h]')
 
     def __str__(self):
         return "\n".join([
