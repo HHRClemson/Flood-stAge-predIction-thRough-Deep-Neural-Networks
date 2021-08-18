@@ -1,6 +1,7 @@
 import pandas as pd
+
 import tensorflow as tf
-from tensorflow.keras import models, Model, layers
+from tensorflow.keras import Model
 
 from predict_flooding.models import *
 from predict_flooding.window_generator import SlidingWindowGenerator
@@ -10,7 +11,6 @@ OUT_STEPS = 10
 
 def _evaluate_baseline(window: SlidingWindowGenerator,
                        show_summary=False):
-    # Since the baseline model does not predict anything, we do not need the training ds
     model: Model = baseline.Baseline(label_index=1)
     if show_summary:
         model.summary()
@@ -18,38 +18,34 @@ def _evaluate_baseline(window: SlidingWindowGenerator,
     model.compile(loss=tf.losses.MeanSquaredError(),
                   metrics=[tf.metrics.MeanAbsoluteError()])
     performance = model.evaluate(window.test_dataset)
+
     window.plot(model)
+
     return performance
 
 
 def _evaluate_dense(window: SlidingWindowGenerator,
                     show_summary=False):
     model: Model = dense.Dense()
-    _, performance = _run_model(model, window.train_dataset, window.test_dataset,
-                                show_summary=show_summary)
-    window.plot(model)
+    _, performance = _run_model(model, window, show_summary=show_summary)
     return performance
 
 
 def _evaluate_cnn(window: SlidingWindowGenerator,
                   show_summary=False):
     model: Model = cnn.CNN(out_steps=1)
-    _, performance = _run_model(model, window.train_dataset, window.test_dataset,
-                                show_summary=show_summary)
-    window.plot(model)
+    _, performance = _run_model(model, window, show_summary=show_summary)
     return performance
 
 
 def _evaluate_lstm(window: SlidingWindowGenerator,
                    show_summary=False):
     model: Model = lstm.LSTM()
-    _, performance = _run_model(model, window.train_dataset, window.test_dataset,
-                                show_summary=show_summary)
-    window.plot(model)
+    _, performance = _run_model(model, window, show_summary=show_summary)
     return performance
 
 
-def _run_model(model: Model, train_ds, test_ds,
+def _run_model(model: Model, window: SlidingWindowGenerator,
                num_epochs=50, patience=5, show_summary=False):
     if show_summary:
         model.summary()
@@ -61,8 +57,10 @@ def _run_model(model: Model, train_ds, test_ds,
                   optimizer=tf.optimizers.Adam(),
                   metrics=[tf.metrics.MeanAbsoluteError()])
 
-    history = model.fit(train_ds, epochs=num_epochs, callbacks=[early_stopping])
-    performance = model.evaluate(test_ds)
+    history = model.fit(window.train_dataset, epochs=num_epochs, callbacks=[early_stopping])
+    performance = model.evaluate(window.test_dataset)
+
+    window.plot(model)
 
     return history, performance
 
@@ -89,7 +87,7 @@ def train_and_predict(path):
     print(test_df.head())
 
     window_generator: SlidingWindowGenerator = SlidingWindowGenerator(
-        input_width=100, label_width=1, shift=10,
+        input_width=1, label_width=1, shift=OUT_STEPS,
         train_df=train_df, test_df=test_df,
         label_columns=["height"])
     print(window_generator)

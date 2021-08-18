@@ -1,4 +1,5 @@
 import numpy as np
+
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
@@ -85,6 +86,7 @@ class SlidingWindowGenerator:
     def plot(self, model: tf.keras.Model, plot_col="height", max_subplots=3):
         """Plot one batch of the training dataset for visual results."""
         inputs, labels = self.plot_dataset
+        #print(inputs.shape, labels.shape)
         plt.figure(figsize=(12, 8))
         plot_col_index = self.column_indices[plot_col]
         max_n = min(max_subplots, len(inputs))
@@ -103,10 +105,15 @@ class SlidingWindowGenerator:
             if label_col_index is None:
                 continue
 
+            #print(self.label_indices.shape)
+            #print(labels.shape)
+            #print(labels[n, :, label_col_index].shape)
             plt.scatter(self.label_indices, labels[n, :, label_col_index],
                         edgecolors='k', label='Labels', c='#2ca02c', s=64)
 
             predictions = model(inputs)
+            #print(predictions.shape)
+            #print(predictions[n, :, label_col_index].shape)
             plt.scatter(self.label_indices, predictions[n, :, label_col_index],
                         marker='X', edgecolors='k', label='Predictions',
                         c='#ff7f0e', s=64)
@@ -115,7 +122,7 @@ class SlidingWindowGenerator:
                 plt.legend()
 
         plt.xlabel('Time [h]')
-        plt.savefig("{}-model.png".format(model.name))
+        plt.savefig("flooding_results/{}-model.png".format(model.name))
         plt.show()
 
     def __str__(self):
