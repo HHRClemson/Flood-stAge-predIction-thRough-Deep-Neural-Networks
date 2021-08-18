@@ -9,15 +9,12 @@ class Baseline(Model):
     period of time and will function as a performance baseline for other models.
     """
 
-    def __init__(self, label_index=None, **kwargs):
+    def __init__(self, out_steps, **kwargs):
         super(Baseline, self).__init__(name="Baseline", **kwargs)
-        self.label_index = label_index
+        self.out_steps = out_steps
 
     def call(self, inputs, training=None, mask=None):
-        if self.label_index is None:
-            return inputs
-        prediction = inputs[:, :, self.label_index]
-        return prediction[:, :, tf.newaxis]
+        return tf.tile(inputs[:, -1:, :], [1, self.out_steps, 1])
 
     def get_config(self):
         return super(Baseline, self).get_config()

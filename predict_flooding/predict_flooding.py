@@ -6,14 +6,13 @@ from tensorflow.keras import Model
 from predict_flooding.models import *
 from predict_flooding.window_generator import SlidingWindowGenerator
 
-OUT_STEPS = 10
+FUTURE_PREDICTIONS = 48
+EPOCHS = 50
+PATIENCE = max(5, EPOCHS // 5)
 
 
-def _evaluate_baseline(window: SlidingWindowGenerator,
-                       show_summary=False):
-    model: Model = baseline.Baseline(label_index=1)
-    if show_summary:
-        model.summary()
+def _evaluate_baseline(window: SlidingWindowGenerator):
+    model: Model = baseline.Baseline(FUTURE_PREDICTIONS)
 
     model.compile(loss=tf.losses.MeanSquaredError(),
                   metrics=[tf.metrics.MeanAbsoluteError()])
@@ -24,39 +23,32 @@ def _evaluate_baseline(window: SlidingWindowGenerator,
     return performance
 
 
-def _evaluate_dense(window: SlidingWindowGenerator,
-                    show_summary=False):
-    model: Model = dense.Dense()
-    _, performance = _run_model(model, window, show_summary=show_summary)
+def _evaluate_dense(window: SlidingWindowGenerator):
+    model: Model = dense.Dense(FUTURE_PREDICTIONS)
+    _, performance = _run_model(model, window)
     return performance
 
 
-def _evaluate_cnn(window: SlidingWindowGenerator,
-                  show_summary=False):
-    model: Model = cnn.CNN(out_steps=1)
-    _, performance = _run_model(model, window, show_summary=show_summary)
+def _evaluate_cnn(window: SlidingWindowGenerator):
+    model: Model = cnn.CNN(FUTURE_PREDICTIONS)
+    _, performance = _run_model(model, window)
     return performance
 
 
-def _evaluate_lstm(window: SlidingWindowGenerator,
-                   show_summary=False):
-    model: Model = lstm.LSTM()
-    _, performance = _run_model(model, window, show_summary=show_summary)
+def _evaluate_lstm(window: SlidingWindowGenerator):
+    model: Model = lstm.LSTM(FUTURE_PREDICTIONS)
+    _, performance = _run_model(model, window)
     return performance
 
 
 def _run_model(model: Model, window: SlidingWindowGenerator,
-               num_epochs=50, patience=5, show_summary=False):
-    if show_summary:
-        model.summary()
-
+               num_epochs=EPOCHS, patience=PATIENCE):
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor="loss", patience=patience, mode="min")
 
     model.compile(loss=tf.losses.MeanSquaredError(),
-                  optimizer=tf.optimizers.Adam(),
-                  metrics=[tf.metrics.MeanAbsoluteError()])
-
+                  metrics=[tf.metrics.MeanAbsoluteError()],
+                  optimizer=tf.optimizers.Adam())
     history = model.fit(window.train_dataset, epochs=num_epochs, callbacks=[early_stopping])
     performance = model.evaluate(window.test_dataset)
 
@@ -78,30 +70,27 @@ def train_and_predict(path):
     # Normalize the data by using the training mean and standard deviation.
     train_mean = train_df.mean(axis=0)
     train_std = train_df.std(axis=0)
-    print(train_mean)
-    print(train_std)
 
-    # train_df = (train_df - train_mean) / train_std
-    # test_df = (test_df - train_mean) / train_std
+    train_df = (train_df - train_mean) / train_std
+    test_df = (test_df - train_mean) / train_std
     print(train_df.head())
     print(test_df.head())
 
     window_generator: SlidingWindowGenerator = SlidingWindowGenerator(
-        input_width=1, label_width=1, shift=OUT_STEPS,
+        input_width=100, label_width=FUTURE_PREDICTIONS, shift=FUTURE_PREDICTIONS,
         train_df=train_df, test_df=test_df,
         label_columns=["height"])
-    print(window_generator)
 
-    baseline_performance = _evaluate_baseline(window_generator, show_summary=False)
+    baseline_performance = _evaluate_baseline(window_generator)
     print("EVALUATED BASELINE:", baseline_performance)
 
-    dense_performance = _evaluate_dense(window_generator, show_summary=False)
+    dense_performance = _evaluate_dense(window_generator)
     print("EVALUATED DENSE:", dense_performance)
 
-    cnn_performance = _evaluate_cnn(window_generator, show_summary=False)
+    cnn_performance = _evaluate_cnn(window_generator)
     print("EVALUATED CNN:", cnn_performance)
 
-    lstm_performance = _evaluate_lstm(window_generator, show_summary=False)
+    lstm_performance = _evaluate_lstm(window_generator)
     print("EVALUATED LSTM:", lstm_performance)
 
     print("\n".join([

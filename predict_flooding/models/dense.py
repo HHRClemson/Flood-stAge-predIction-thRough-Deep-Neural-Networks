@@ -1,18 +1,21 @@
+import tensorflow as tf
 from tensorflow.keras import models, Model, layers
 
 
 class Dense(Model):
 
-    def __init__(self, **kwargs):
+    def __init__(self, out_steps, **kwargs):
         super(Dense, self).__init__(name="Dense", **kwargs)
+        self.out_steps = out_steps
         self.model: Model = self._create_model()
 
-    @staticmethod
-    def _create_model() -> Model:
+    def _create_model(self) -> Model:
         model = models.Sequential()
-        model.add(layers.Dense(64, activation="relu"))
-        model.add(layers.Dense(64, activation="relu"))
-        model.add(layers.Dense(1))
+        model.add(layers.Lambda(lambda x: x[:, -1:, :]))
+        model.add(layers.Dense(512, activation="relu"))
+        model.add(layers.Dense(self.out_steps,
+                               kernel_initializer=tf.initializers.zeros()))
+        model.add(layers.Reshape([self.out_steps, 1]))
         return model
 
     def call(self, inputs, training=None, mask=None):
