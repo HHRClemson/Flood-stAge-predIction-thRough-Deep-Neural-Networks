@@ -1,5 +1,8 @@
+import numpy as np
 import pandas as pd
+from pprint import pprint
 
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.keras import Model
 
@@ -7,7 +10,7 @@ from predict_flooding.models import *
 from predict_flooding.window_generator import SlidingWindowGenerator
 
 FUTURE_PREDICTIONS = 48
-EPOCHS = 50
+EPOCHS = 75
 PATIENCE = max(5, EPOCHS // 5)
 
 
@@ -57,6 +60,27 @@ def _run_model(model: Model, window: SlidingWindowGenerator,
     return history, performance
 
 
+def _plot_performance(performances):
+    x = np.arange(len(performances))
+    width = 0.3
+
+    # sort the models by metric performance descending
+    results = sorted(performances.items(), key=lambda x: x[1][1], reverse=True)
+
+    mse = [m[1][0] for m in results]
+    mae = [m[1][1] for m in results]
+    model_names = [m[0] for m in results]
+
+    plt.bar(x - 0.15, mse, width, label="Mean Square Error")
+    plt.bar(x + 0.15, mae, width, label="Mean Absolute Error")
+    plt.xticks(ticks=x, labels=model_names, rotation=45)
+    plt.ylabel("MSE & MAE averaged and normalized over all times")
+    plt.legend()
+
+    plt.show()
+    plt.savefig("flooding_results/performance.png")
+
+
 def train_and_predict(path):
     df = pd.read_csv(path)
     df = df.drop("time", axis=1)
@@ -93,12 +117,16 @@ def train_and_predict(path):
     lstm_performance = _evaluate_lstm(window_generator)
     print("EVALUATED LSTM:", lstm_performance)
 
-    print("\n".join([
-        "Baseline performance: {}".format(baseline_performance),
-        "Dense performance: {}".format(dense_performance),
-        "CNN performance: {}".format(cnn_performance),
-        "LSTM performance: {}".format(lstm_performance)
-    ]))
+    performances = {
+        "baseline": baseline_performance,
+        "dense": dense_performance,
+        "cnn": cnn_performance,
+        "lstm": lstm_performance
+    }
+
+    print("\n\nPERFORMANCES: [Mean Squared Error, Mean Absolute Error]")
+    pprint(performances)
+    _plot_performance(performances)
 
 
 if __name__ == "__main__":
