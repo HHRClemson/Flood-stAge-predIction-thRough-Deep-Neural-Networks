@@ -11,8 +11,7 @@ class LSTM(Model):
 
     def _create_model(self) -> Model:
         model = models.Sequential()
-        model.add(layers.LSTM(64, return_sequences=True))
-        model.add(layers.LSTM(32, return_sequences=False))
+        model.add(layers.LSTM(64, return_sequences=False))
         model.add(layers.Dense(self.out_steps,
                                kernel_initializer=tf.initializers.zeros()))
         model.add(layers.Reshape([self.out_steps, 1]))

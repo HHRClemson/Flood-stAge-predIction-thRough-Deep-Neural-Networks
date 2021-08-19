@@ -13,6 +13,7 @@ class Dense(Model):
         model = models.Sequential()
         model.add(layers.Lambda(lambda x: x[:, -1:, :]))
         model.add(layers.Dense(512, activation="relu"))
+        model.add(layers.Dense(256, activation="relu"))
         model.add(layers.Dense(self.out_steps,
                                kernel_initializer=tf.initializers.zeros()))
         model.add(layers.Reshape([self.out_steps, 1]))

@@ -10,42 +10,49 @@ from predict_flooding.models import *
 from predict_flooding.window_generator import SlidingWindowGenerator
 
 FUTURE_PREDICTIONS = 48
-EPOCHS = 75
+EPOCHS = 35
 PATIENCE = max(5, EPOCHS // 5)
 
 
-def _evaluate_baseline(window: SlidingWindowGenerator):
+def _evaluate_baseline(window: SlidingWindowGenerator, visualize):
     model: Model = baseline.Baseline(FUTURE_PREDICTIONS)
 
     model.compile(loss=tf.losses.MeanSquaredError(),
                   metrics=[tf.metrics.MeanAbsoluteError()])
     performance = model.evaluate(window.test_dataset)
 
-    window.plot(model)
+    if visualize:
+        window.plot(model)
 
     return performance
 
 
-def _evaluate_dense(window: SlidingWindowGenerator):
+def _evaluate_dense(window: SlidingWindowGenerator, visualize):
     model: Model = dense.Dense(FUTURE_PREDICTIONS)
-    _, performance = _run_model(model, window)
+    _, performance = _run_model(model, window, visualize)
     return performance
 
 
-def _evaluate_cnn(window: SlidingWindowGenerator):
+def _evaluate_cnn(window: SlidingWindowGenerator, visualize):
     model: Model = cnn.CNN(FUTURE_PREDICTIONS)
-    _, performance = _run_model(model, window)
+    _, performance = _run_model(model, window, visualize)
     return performance
 
 
-def _evaluate_lstm(window: SlidingWindowGenerator):
+def _evaluate_lstm(window: SlidingWindowGenerator, visualize):
     model: Model = lstm.LSTM(FUTURE_PREDICTIONS)
-    _, performance = _run_model(model, window)
+    _, performance = _run_model(model, window, visualize)
+    return performance
+
+
+def _evaluate_autoregressive_lstm(window: SlidingWindowGenerator, visualize):
+    model: Model = autoregressive_lstm.AutoRegressiveLSTM(FUTURE_PREDICTIONS)
+    _, performance = _run_model(model, window, visualize)
     return performance
 
 
 def _run_model(model: Model, window: SlidingWindowGenerator,
-               num_epochs=EPOCHS, patience=PATIENCE):
+               visualize, num_epochs=EPOCHS, patience=PATIENCE):
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor="loss", patience=patience, mode="min")
 
@@ -55,7 +62,8 @@ def _run_model(model: Model, window: SlidingWindowGenerator,
     history = model.fit(window.train_dataset, epochs=num_epochs, callbacks=[early_stopping])
     performance = model.evaluate(window.test_dataset)
 
-    window.plot(model)
+    if visualize:
+        window.plot(model)
 
     return history, performance
 
@@ -69,7 +77,7 @@ def _plot_performance(performances):
 
     mse = [m[1][0] for m in results]
     mae = [m[1][1] for m in results]
-    model_names = [m[0] for m in results]
+    model_names = [m[0].upper() for m in results]
 
     plt.bar(x - 0.15, mse, width, label="Mean Square Error")
     plt.bar(x + 0.15, mae, width, label="Mean Absolute Error")
@@ -77,11 +85,12 @@ def _plot_performance(performances):
     plt.ylabel("MSE & MAE averaged and normalized over all times")
     plt.legend()
 
-    plt.show()
     plt.savefig("flooding_results/performance.png")
+    plt.show()
+    plt.close()
 
 
-def train_and_predict(path):
+def train_and_predict(path, visualize=True):
     df = pd.read_csv(path)
     df = df.drop("time", axis=1)
     df["height"] = pd.to_numeric(df["height"], errors="coerce")
@@ -94,39 +103,42 @@ def train_and_predict(path):
     # Normalize the data by using the training mean and standard deviation.
     train_mean = train_df.mean(axis=0)
     train_std = train_df.std(axis=0)
-
     train_df = (train_df - train_mean) / train_std
     test_df = (test_df - train_mean) / train_std
-    print(train_df.head())
-    print(test_df.head())
 
-    window_generator: SlidingWindowGenerator = SlidingWindowGenerator(
+    window: SlidingWindowGenerator = SlidingWindowGenerator(
         input_width=100, label_width=FUTURE_PREDICTIONS, shift=FUTURE_PREDICTIONS,
         train_df=train_df, test_df=test_df,
         label_columns=["height"])
 
-    baseline_performance = _evaluate_baseline(window_generator)
+    baseline_performance = _evaluate_baseline(window, visualize)
     print("EVALUATED BASELINE:", baseline_performance)
 
-    dense_performance = _evaluate_dense(window_generator)
+    dense_performance = _evaluate_dense(window, visualize)
     print("EVALUATED DENSE:", dense_performance)
 
-    cnn_performance = _evaluate_cnn(window_generator)
+    cnn_performance = _evaluate_cnn(window, visualize)
     print("EVALUATED CNN:", cnn_performance)
 
-    lstm_performance = _evaluate_lstm(window_generator)
+    lstm_performance = _evaluate_lstm(window, visualize)
     print("EVALUATED LSTM:", lstm_performance)
+
+    ar_lstm_performance = _evaluate_autoregressive_lstm(window, visualize)
+    print("EVALUATED AUTOREGRESSIVE LSTM:", ar_lstm_performance)
 
     performances = {
         "baseline": baseline_performance,
         "dense": dense_performance,
         "cnn": cnn_performance,
-        "lstm": lstm_performance
+        "lstm": lstm_performance,
+        "ar lstm": ar_lstm_performance
     }
 
     print("\n\nPERFORMANCES: [Mean Squared Error, Mean Absolute Error]")
     pprint(performances)
-    _plot_performance(performances)
+
+    if visualize:
+        _plot_performance(performances)
 
 
 if __name__ == "__main__":

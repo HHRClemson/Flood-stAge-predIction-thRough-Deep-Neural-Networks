@@ -15,7 +15,8 @@ class CNN(Model):
     def _create_model(self) -> Model:
         model = models.Sequential()
         model.add(layers.Lambda(lambda x: x[:, -self.conv_width:, :]))
-        model.add(layers.Conv1D(256, activation="relu", kernel_size=self.conv_width))
+        model.add(layers.Conv1D(512, activation="relu", kernel_size=self.conv_width))
+        model.add(layers.Dense(256, activation="relu"))
         model.add(layers.Dense(self.out_steps,
                                kernel_initializer=tf.initializers.zeros()))
         model.add(layers.Reshape([self.out_steps, 1]))
