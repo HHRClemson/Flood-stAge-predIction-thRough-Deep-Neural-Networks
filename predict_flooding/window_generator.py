@@ -75,7 +75,7 @@ class SlidingWindowGenerator:
         return ds.map(self.split_window)
 
     def plot(self, model: Optional[tf.keras.Model], max_subplots=5):
-        """Plot one batch of the training dataset for visual results."""
+        """Plot batches of the training dataset for visual results."""
         plot_data = iter(self.train_dataset)
         plt.figure(figsize=(12, 8))
 
@@ -85,7 +85,7 @@ class SlidingWindowGenerator:
         for i in range(max_subplots):
             inputs, labels = next(plot_data)
             plt.subplot(max_subplots, 1, i + 1)
-            plt.ylabel(f'{plot_col} [normed]')
+            plt.ylabel("{} [normed]".format(plot_col))
             plt.plot(self.input_indices, inputs[i, :, plot_col_index],
                      label='Inputs', marker='.', zorder=-10)
 
