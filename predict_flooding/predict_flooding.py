@@ -10,7 +10,7 @@ from predict_flooding.models import *
 from predict_flooding.window_generator import SlidingWindowGenerator
 
 FUTURE_PREDICTIONS = 48
-EPOCHS = 35
+EPOCHS = 0
 PATIENCE = max(5, EPOCHS // 5)
 
 
@@ -18,7 +18,10 @@ def _evaluate_baseline(window: SlidingWindowGenerator, visualize):
     model: Model = baseline.Baseline(FUTURE_PREDICTIONS)
 
     model.compile(loss=tf.losses.MeanSquaredError(),
-                  metrics=[tf.metrics.MeanAbsoluteError()])
+                  metrics=[tf.metrics.MeanAbsoluteError(name="MAE"),
+                           r_square,
+                           tf.metrics.RootMeanSquaredError(name="RMSE"),
+                           tf.metrics.MeanAbsolutePercentageError(name="MAPE")])
     performance = model.evaluate(window.test_dataset)
 
     if visualize:
@@ -51,13 +54,23 @@ def _evaluate_autoregressive_lstm(window: SlidingWindowGenerator, visualize):
     return performance
 
 
+def _r_square(y, y_pred):
+    residual = tf.reduce_sum(tf.square(tf.subtract(y, y_pred)))
+    total = tf.reduce_sum(tf.square(tf.subtract(y, tf.reduce_mean(y))))
+    r2 = tf.subtract(1.0, tf.divide(residual, total))
+    return r2
+
+
 def _run_model(model: Model, window: SlidingWindowGenerator,
                visualize, num_epochs=EPOCHS, patience=PATIENCE):
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor="loss", patience=patience, mode="min")
 
-    model.compile(loss=tf.losses.MeanSquaredError(),
-                  metrics=[tf.metrics.MeanAbsoluteError()],
+    model.compile(loss=tf.losses.MeanSquaredError(name="MSE"),
+                  metrics=[tf.metrics.MeanAbsoluteError(name="MAE"),
+                           _r_square,
+                           tf.metrics.RootMeanSquaredError(name="RMSE"),
+                           tf.metrics.MeanAbsolutePercentageError(name="MAPE")],
                   optimizer=tf.optimizers.Adam())
     history = model.fit(window.train_dataset, epochs=num_epochs, callbacks=[early_stopping])
     performance = model.evaluate(window.test_dataset)
@@ -70,19 +83,25 @@ def _run_model(model: Model, window: SlidingWindowGenerator,
 
 def _plot_performance(performances):
     x = np.arange(len(performances))
-    width = 0.3
+    width = 0.15
 
     # sort the models by metric performance descending
     results = sorted(performances.items(), key=lambda x: x[1][1], reverse=True)
 
-    mse = [m[1][0] for m in results]
-    mae = [m[1][1] for m in results]
+    mae = [m[1][0] for m in results]
+    r2 = [m[1][1] for m in results]
+    #rmse = [m[1][2] for m in results]
+    rmse = [1 for m in results]
+    mape = [m[1][3] for m in results]
+
     model_names = [m[0].upper() for m in results]
 
-    plt.bar(x - 0.15, mse, width, label="Mean Square Error")
-    plt.bar(x + 0.15, mae, width, label="Mean Absolute Error")
+    plt.bar(x - 0.3, mae, width, label="Mean Absolute Error")
+    plt.bar(x - 0.15, r2, width, label="R Squared Error")
+    plt.bar(x + 0.0, rmse, width, label="Root Mean Square Error")
+    plt.bar(x + 0.15, mape, width, label="Mean Absolute Percentage Error")
     plt.xticks(ticks=x, labels=model_names, rotation=45)
-    plt.ylabel("MSE & MAE averaged and normalized over all times")
+    plt.ylabel("Metrics")
     plt.legend()
 
     plt.savefig("flooding_results/performance.png")
@@ -90,7 +109,7 @@ def _plot_performance(performances):
     plt.close()
 
 
-def train_and_predict(path, visualize=True):
+def train_and_predict(path, visualize=False):
     df = pd.read_csv(path)
     df = df.drop("time", axis=1)
     df["height"] = pd.to_numeric(df["height"], errors="coerce")
@@ -123,21 +142,17 @@ def train_and_predict(path, visualize=True):
     lstm_performance = _evaluate_lstm(window, visualize)
     print("EVALUATED LSTM:", lstm_performance)
 
-    ar_lstm_performance = _evaluate_autoregressive_lstm(window, visualize)
-    print("EVALUATED AUTOREGRESSIVE LSTM:", ar_lstm_performance)
-
     performances = {
         "baseline": baseline_performance,
         "dense": dense_performance,
         "cnn": cnn_performance,
         "lstm": lstm_performance,
-        "ar lstm": ar_lstm_performance
     }
 
     print("\n\nPERFORMANCES: [Mean Squared Error, Mean Absolute Error]")
     pprint(performances)
 
-    if visualize:
+    if visualize or True:
         _plot_performance(performances)
 
 
