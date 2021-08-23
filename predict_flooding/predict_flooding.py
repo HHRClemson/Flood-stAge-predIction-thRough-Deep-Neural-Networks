@@ -22,8 +22,8 @@ def _r_square(y, y_pred):
     return r2
 
 
-def _run_model(model: Model, window: SlidingWindowGenerator,
-               visualize, num_epochs=EPOCHS, patience=PATIENCE, fit_model=True):
+def _run_model(model: Model, window: SlidingWindowGenerator, visualize, path,
+               num_epochs=EPOCHS, patience=PATIENCE, fit_model=True):
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor="loss", patience=patience, mode="min")
 
@@ -34,20 +34,17 @@ def _run_model(model: Model, window: SlidingWindowGenerator,
                            tf.metrics.MeanAbsolutePercentageError(name="MAPE")],
                   optimizer=tf.optimizers.Adam())
 
-    if fit_model:
-        history = model.fit(window.train_dataset, epochs=num_epochs,
-                            callbacks=[early_stopping])
-    else:
-        history = None
+    history = model.fit(window.train_dataset, epochs=num_epochs,
+                        callbacks=[early_stopping]) if fit_model else None
     performance = model.evaluate(window.test_dataset)
 
     if visualize:
-        window.plot(model)
+        window.plot(model, path)
 
     return history, performance
 
 
-def _plot_performance(performances):
+def _plot_performance(performances, path):
     x = np.arange(len(performances))
 
     # sort the models by metric performance descending
@@ -70,16 +67,19 @@ def _plot_performance(performances):
         plt.ylabel(metric[0])
         plt.legend()
 
-        plt.savefig("flooding_results/{}-metric.png".format(metric[0].replace(" ", "-")))
+        plt.savefig(path + "{}-metric.png".format(metric[0].replace(" ", "-")))
         plt.show()
         plt.close()
 
 
-def train_and_predict(path, visualize=True):
-    df = pd.read_csv(path)
-    df = df.drop("time", axis=1)
-    df["height"] = pd.to_numeric(df["height"], errors="coerce")
-    df["perception"] = pd.to_numeric(df["perception"], errors="coerce")
+def train_and_predict(path, df=None,
+                      input_width=INPUT_WIDTH, future_predictions=FUTURE_PREDICTIONS,
+                      visualize=True, prefix=""):
+    if df is None:
+        df = pd.read_csv(path)
+        df = df.drop("time", axis=1)
+        df["height"] = pd.to_numeric(df["height"], errors="coerce")
+        df["perception"] = pd.to_numeric(df["perception"], errors="coerce")
 
     train_test_split = int(len(df) * 0.8)
     train_df = df[0:train_test_split]
@@ -92,30 +92,47 @@ def train_and_predict(path, visualize=True):
     #test_df = (test_df - train_mean) / train_std
 
     window: SlidingWindowGenerator = SlidingWindowGenerator(
-        input_width=INPUT_WIDTH, label_width=FUTURE_PREDICTIONS, shift=FUTURE_PREDICTIONS,
+        input_width=input_width, label_width=future_predictions, shift=future_predictions,
         train_df=train_df, test_df=test_df,
         label_columns=["height"])
 
-    models = [baseline.Baseline(FUTURE_PREDICTIONS),
-              dense.Dense(FUTURE_PREDICTIONS),
-              cnn.CNN(FUTURE_PREDICTIONS),
-              lstm.LSTM(FUTURE_PREDICTIONS)]
+    models = [baseline.Baseline(future_predictions),
+              dense.Dense(future_predictions),
+              cnn.CNN(future_predictions),
+              lstm.LSTM(future_predictions)]
+
+    plot_paths = "flooding_results/" + prefix
 
     performances = {}
 
+    print("\n\nSTART TRAINING WITH input_width={0}, label_width={1}".format(
+        input_width, future_predictions))
+
     for model in models:
         name = model.name
-        fit_model = False if name == "Baseline" else True
-        _, performance = _run_model(model, window, visualize, fit_model=fit_model)
+        print("\nSTART {} TRAINING:".format(name.upper()))
+        _, performance = _run_model(model, window, visualize, plot_paths,
+                                    fit_model=False if name == "Baseline" else True)
+
         print("EVALUATED {}:".format(name.upper()), performance)
         performances[name] = performance
 
-    print("\n\nPERFORMANCES: [Mean Squared Error, Mean Absolute Error]")
+    print("\n\nPERFORMANCES: [MSE, MAE, R2, RMSE, MAPE]")
     pprint(performances)
 
     if visualize:
-        _plot_performance(performances)
+        _plot_performance(performances, plot_paths)
 
 
 if __name__ == "__main__":
-    train_and_predict("datasets/time_series/chattahoochee.csv")
+    path = "datasets/time_series/chattahoochee.csv"
+
+    df = pd.read_csv(path)
+    df = df.drop("time", axis=1)
+    df["height"] = pd.to_numeric(df["height"], errors="coerce")
+    df["perception"] = pd.to_numeric(df["perception"], errors="coerce")
+
+    windows = [(100, 3 * 4), (100, 6 * 4), (100, 9 * 4), (100, 12 * 4)]
+    for i, window in enumerate(windows):
+        train_and_predict("", df=df, input_width=window[0], future_predictions=window[1],
+                          visualize=True, prefix=str(i) + "/")

@@ -74,7 +74,7 @@ class SlidingWindowGenerator:
 
         return ds.map(self.split_window)
 
-    def plot(self, model: Optional[tf.keras.Model], max_subplots=5):
+    def plot(self, model: Optional[tf.keras.Model], path, max_subplots=5):
         """Plot batches of the training dataset for visual results."""
         plot_data = iter(self.train_dataset)
         plt.figure(figsize=(12, 8))
@@ -109,7 +109,7 @@ class SlidingWindowGenerator:
         plt.xlabel('Time [h]')
 
         if model is not None:
-            plt.savefig("flooding_results/{}-model.png".format(model.name))
+            plt.savefig(path + "{}-model.png".format(model.name))
         plt.show()
         plt.close()
 
