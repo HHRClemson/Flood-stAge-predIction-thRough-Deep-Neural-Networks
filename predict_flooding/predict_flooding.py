@@ -85,11 +85,11 @@ def train_and_predict(path, df=None,
     train_df = df[0:train_test_split]
     test_df = df[train_test_split:]
 
-    # Normalize the data by using the training mean and standard deviation.
+    # Normalize the data by using the training mean and standard deviation
     train_mean = train_df.mean(axis=0)
     train_std = train_df.std(axis=0)
-    #train_df = (train_df - train_mean) / train_std
-    #test_df = (test_df - train_mean) / train_std
+    train_df = (train_df - train_mean) / train_std
+    test_df = (test_df - train_mean) / train_std
 
     window: SlidingWindowGenerator = SlidingWindowGenerator(
         input_width=input_width, label_width=future_predictions, shift=future_predictions,
@@ -125,14 +125,22 @@ def train_and_predict(path, df=None,
 
 
 if __name__ == "__main__":
-    path = "datasets/time_series/chattahoochee.csv"
+    paths = ["./datasets/time_series/chattahoochee-helen.csv",
+             "./datasets/time_series/chattahoochee-columbus.csv",
+             "./datasets/time_series/sweetwater-creek.csv"]
 
-    df = pd.read_csv(path)
-    df = df.drop("time", axis=1)
-    df["height"] = pd.to_numeric(df["height"], errors="coerce")
-    df["perception"] = pd.to_numeric(df["perception"], errors="coerce")
-
+    # run experiments for predicting the future in 3h, 6h, and 9h
     windows = [(100, 3 * 4), (100, 6 * 4), (100, 9 * 4), (100, 12 * 4)]
-    for i, window in enumerate(windows):
-        train_and_predict("", df=df, input_width=window[0], future_predictions=window[1],
-                          visualize=True, prefix=str(i) + "/")
+
+    for path in paths:
+        df = pd.read_csv(path)
+        df = df.drop("time", axis=1)
+        df["height"] = pd.to_numeric(df["height"], errors="coerce")
+        df["perception"] = pd.to_numeric(df["perception"], errors="coerce")
+
+        for i, window in enumerate(windows):
+            csv_name = path.split('/')[-1].split('.')[0]
+            plot_path = csv_name + "-results/" + str(i) + '/'
+
+            train_and_predict("", df=df, input_width=window[0], future_predictions=window[1],
+                              visualize=True, prefix=plot_path)
