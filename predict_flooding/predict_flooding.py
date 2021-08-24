@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import json
 from pprint import pprint
 
 import matplotlib.pyplot as plt
@@ -74,7 +75,7 @@ def _plot_performance(performances, path):
 
 def train_and_predict(path, df=None,
                       input_width=INPUT_WIDTH, future_predictions=FUTURE_PREDICTIONS,
-                      visualize=True, prefix=""):
+                      visualize=True, plot_path="flooding_results/"):
     if df is None:
         df = pd.read_csv(path)
         df = df.drop("time", axis=1)
@@ -101,8 +102,6 @@ def train_and_predict(path, df=None,
               cnn.CNN(future_predictions),
               lstm.LSTM(future_predictions)]
 
-    plot_paths = "flooding_results/" + prefix
-
     performances = {}
 
     print("\n\nSTART TRAINING WITH input_width={0}, label_width={1}".format(
@@ -111,17 +110,20 @@ def train_and_predict(path, df=None,
     for model in models:
         name = model.name
         print("\nSTART {} TRAINING:".format(name.upper()))
-        _, performance = _run_model(model, window, visualize, plot_paths,
+        _, performance = _run_model(model, window, visualize, plot_path,
                                     fit_model=False if name == "Baseline" else True)
 
         print("EVALUATED {}:".format(name.upper()), performance)
         performances[name] = performance
 
-    print("\n\nPERFORMANCES: [MSE, MAE, R2, RMSE, MAPE]")
+    print("\n\nPERFORMANCES: [MSE, MAE, R^2, RMSE, MAPE]")
     pprint(performances)
 
+    with open(plot_path + "performances.txt", "w") as f:
+        f.write(json.dumps(performances, indent=4))
+
     if visualize:
-        _plot_performance(performances, plot_paths)
+        _plot_performance(performances, plot_path)
 
 
 if __name__ == "__main__":
@@ -140,7 +142,7 @@ if __name__ == "__main__":
 
         for i, window in enumerate(windows):
             csv_name = path.split('/')[-1].split('.')[0]
-            plot_path = csv_name + "-results/" + str(i) + '/'
+            curr_plot_path = "results/" + csv_name + '/' + str(i) + '/'
 
             train_and_predict("", df=df, input_width=window[0], future_predictions=window[1],
-                              visualize=True, prefix=plot_path)
+                              visualize=True, plot_path=curr_plot_path)
