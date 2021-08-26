@@ -13,6 +13,7 @@ __pycache__/
 *.jpeg
 *.jpg
 *.svg
+*.txt
 
 # Saved Models
 saved_models/

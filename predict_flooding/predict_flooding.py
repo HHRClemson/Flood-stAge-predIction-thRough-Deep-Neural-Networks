@@ -16,7 +16,16 @@ EPOCHS = 50
 PATIENCE = max(5, EPOCHS // 5)
 
 
+def _wape(y, y_pred):
+    """Weighted Average Percentage Error metric in the interval [0; 100]"""
+    denominator = tf.reduce_sum(tf.abs(tf.subtract(y, y_pred)))
+    nominator = tf.reduce_sum(tf.abs(y))
+    wape = tf.scalar_mul(100.0, tf.divide(denominator, nominator))
+    return wape
+
+
 def _r_square(y, y_pred):
+    """R^2 metric, also known as coefficient of determination"""
     residual = tf.reduce_sum(tf.square(tf.subtract(y, y_pred)))
     total = tf.reduce_sum(tf.square(tf.subtract(y, tf.reduce_mean(y))))
     r2 = tf.subtract(1.0, tf.divide(residual, total))
@@ -32,7 +41,8 @@ def _run_model(model: Model, window: SlidingWindowGenerator, visualize, path,
                   metrics=[tf.metrics.MeanAbsoluteError(name="MAE"),
                            _r_square,
                            tf.metrics.RootMeanSquaredError(name="RMSE"),
-                           tf.metrics.MeanAbsolutePercentageError(name="MAPE")],
+                           tf.metrics.MeanAbsolutePercentageError(name="MAPE"),
+                           _wape],
                   optimizer=tf.optimizers.Adam())
 
     history = model.fit(window.train_dataset, epochs=num_epochs,
@@ -56,11 +66,13 @@ def _plot_performance(performances, path):
     r2 = [m[1][2] for m in results]
     rmse = [m[1][3] for m in results]
     mape = [m[1][4] for m in results]
+    wape = [m[1][5] for m in results]
 
     metrics = [("Mean Absolute Error", mae),
                ("R Squared Error", r2),
                ("Root Mean Square Error", rmse),
-               ("Mean Absolute Percentage Error", mape)]
+               ("Mean Absolute Percentage Error", mape),
+               ("Weighted Average Percentage Error", wape)]
 
     for metric in metrics:
         plt.bar(x, metric[1], label=metric[0])
