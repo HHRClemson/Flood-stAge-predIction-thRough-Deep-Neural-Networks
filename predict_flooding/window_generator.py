@@ -74,7 +74,7 @@ class SlidingWindowGenerator:
 
         return ds.map(self.split_window)
 
-    def plot(self, model: Optional[tf.keras.Model], path, max_subplots=5):
+    def plot(self, models: [Optional[tf.keras.Model]], path, max_subplots=3):
         """Plot batches of the training dataset for visual results."""
         plot_data = iter(self.train_dataset)
         plt.figure(figsize=(12, 8))
@@ -94,22 +94,25 @@ class SlidingWindowGenerator:
             else:
                 label_col_index = plot_col_index
 
-            plt.scatter(self.label_indices, labels[i, :, label_col_index],
-                        edgecolors='k', label="Labels", c="#2ca02c", s=64)
+            plt.plot(self.label_indices, labels[i, :, label_col_index],
+                     marker='o', label="Labels", c="#2ca02c")
 
-            if model is not None:
-                predictions = model(inputs)
-                plt.scatter(self.label_indices, predictions[i, :, label_col_index],
-                            marker='X', edgecolors='k', label="Predictions",
-                            c="#ff7f0e", s=64)
+            markers = ['X', '^', 's', '*']
+            colors = ['red', 'purple', "orange", "cyan"]
+            if models:
+                for j, model in enumerate(models):
+                    predictions = model(inputs)
+                    plt.plot(self.label_indices, predictions[i, :, label_col_index],
+                             marker=markers[j], color=colors[j], label=model.name)
 
             if i == 0:
                 plt.legend()
 
-        plt.xlabel('Time [h]')
+        plt.xlabel('Time [15min]')
 
-        if model is not None:
-            plt.savefig(path + "{}-model.png".format(model.name))
+        if models:
+            name = "models" if len(models) > 1 else models[0].name
+            plt.savefig(path + "{}-results.png".format(name))
         plt.show()
         plt.close()
 

@@ -14,25 +14,26 @@ INPUT_WIDTH = 100
 FUTURE_PREDICTIONS = 36
 EPOCHS = 50
 PATIENCE = max(5, EPOCHS // 5)
+EPSILON = 0.0000001  # add metrics by epsilon to prevent division by zero
 
 
 def _wape(y, y_pred):
     """Weighted Average Percentage Error metric in the interval [0; 100]"""
-    denominator = tf.reduce_sum(tf.abs(tf.subtract(y, y_pred)))
-    nominator = tf.reduce_sum(tf.abs(y))
-    wape = tf.scalar_mul(100.0, tf.divide(denominator, nominator))
+    nominator = tf.reduce_sum(tf.abs(tf.subtract(y, y_pred)))
+    denominator = tf.add(tf.reduce_sum(tf.abs(y)), EPSILON)
+    wape = tf.scalar_mul(100.0, tf.divide(nominator, denominator))
     return wape
 
 
 def _r_square(y, y_pred):
     """R^2 metric, also known as coefficient of determination"""
     residual = tf.reduce_sum(tf.square(tf.subtract(y, y_pred)))
-    total = tf.reduce_sum(tf.square(tf.subtract(y, tf.reduce_mean(y))))
+    total = tf.add(tf.reduce_sum(tf.square(tf.subtract(y, tf.reduce_mean(y)))), EPSILON)
     r2 = tf.subtract(1.0, tf.divide(residual, total))
     return r2
 
 
-def _run_model(model: Model, window: SlidingWindowGenerator, visualize, path,
+def _run_model(model: Model, window: SlidingWindowGenerator,
                num_epochs=EPOCHS, patience=PATIENCE, fit_model=True):
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor="loss", patience=patience, mode="min")
@@ -48,9 +49,6 @@ def _run_model(model: Model, window: SlidingWindowGenerator, visualize, path,
     history = model.fit(window.train_dataset, epochs=num_epochs,
                         callbacks=[early_stopping]) if fit_model else None
     performance = model.evaluate(window.test_dataset)
-
-    if visualize:
-        window.plot(model, path)
 
     return history, performance
 
@@ -122,7 +120,7 @@ def train_and_predict(path, df=None,
     for model in models:
         name = model.name
         print("\nSTART {} TRAINING:".format(name.upper()))
-        _, performance = _run_model(model, window, visualize, plot_path,
+        _, performance = _run_model(model, window,
                                     fit_model=False if name == "Baseline" else True)
 
         print("EVALUATED {}:".format(name.upper()), performance)
@@ -135,18 +133,21 @@ def train_and_predict(path, df=None,
         f.write(json.dumps(performances, indent=4))
 
     if visualize:
+        window.plot(models, plot_path)
         _plot_performance(performances, plot_path)
 
 
 if __name__ == "__main__":
-    paths = ["./datasets/time_series/chattahoochee-helen.csv",
-             "./datasets/time_series/chattahoochee-columbus.csv",
+    paths = ["./datasets/time_series/chattahoochee-columbus.csv",
+             "./datasets/time_series/chattahoochee-helen.csv",
              "./datasets/time_series/sweetwater-creek.csv"]
 
     # run experiments for predicting the future in 3h, 6h, and 9h
     windows = [(100, 3 * 4), (100, 6 * 4), (100, 9 * 4), (100, 12 * 4)]
 
     for path in paths:
+        print("\n\nSTART TRAINING OF DATASET:", path, "\n\n")
+
         df = pd.read_csv(path)
         df = df.drop("time", axis=1)
         df["height"] = pd.to_numeric(df["height"], errors="coerce")
