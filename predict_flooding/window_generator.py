@@ -74,7 +74,11 @@ class SlidingWindowGenerator:
 
         return ds.map(self.split_window)
 
-    def plot(self, models: [Optional[tf.keras.Model]], path, max_subplots=3):
+    @staticmethod
+    def _scale_list(l, scale_by):
+        return list(map(lambda x: x + scale_by, l))
+
+    def plot(self, models: [Optional[tf.keras.Model]], path, max_subplots=3, scale_by=0.0):
         """Plot batches of the training dataset for visual results."""
         plot_data = iter(self.train_dataset)
         plt.figure(figsize=(12, 8))
@@ -86,7 +90,9 @@ class SlidingWindowGenerator:
             inputs, labels = next(plot_data)
             plt.subplot(max_subplots, 1, i + 1)
             plt.ylabel("{} [normed]".format(plot_col))
-            plt.plot(self.input_indices, inputs[i, :, plot_col_index],
+
+            input_points = self._scale_list(inputs[i, :, plot_col_index], scale_by)
+            plt.plot(self.input_indices, input_points,
                      label='Inputs', marker='.', zorder=-10)
 
             if self.label_columns:
@@ -94,15 +100,19 @@ class SlidingWindowGenerator:
             else:
                 label_col_index = plot_col_index
 
-            plt.plot(self.label_indices, labels[i, :, label_col_index],
+            label_points = self._scale_list(labels[i, :, label_col_index], scale_by)
+            plt.plot(self.label_indices, label_points,
                      marker='o', label="Labels", c="#2ca02c")
 
-            markers = ['X', '^', 's', '*']
-            colors = ['red', 'purple', "orange", "cyan"]
             if models:
+                markers = ['X', '^', 's', '*']
+                colors = ["red", "purple", "orange", "cyan"]
+
                 for j, model in enumerate(models):
                     predictions = model(inputs)
-                    plt.plot(self.label_indices, predictions[i, :, label_col_index],
+                    prediction_points = self._scale_list(predictions[i, :, label_col_index],
+                                                         scale_by)
+                    plt.plot(self.label_indices, prediction_points,
                              marker=markers[j], color=colors[j], label=model.name)
 
             if i == 0:

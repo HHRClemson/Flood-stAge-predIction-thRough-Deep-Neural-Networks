@@ -12,7 +12,7 @@ from predict_flooding.window_generator import SlidingWindowGenerator
 
 INPUT_WIDTH = 100
 FUTURE_PREDICTIONS = 36
-EPOCHS = 50
+EPOCHS = 0
 PATIENCE = max(5, EPOCHS // 5)
 EPSILON = 0.0000001  # add metrics by epsilon to prevent division by zero
 
@@ -85,7 +85,8 @@ def _plot_performance(performances, path):
 
 def train_and_predict(path, df=None,
                       input_width=INPUT_WIDTH, future_predictions=FUTURE_PREDICTIONS,
-                      visualize=True, plot_path="flooding_results/"):
+                      visualize=True, plot_path="flooding_results/",
+                      scale=0.0):
     if df is None:
         df = pd.read_csv(path)
         df = df.drop("time", axis=1)
@@ -99,8 +100,8 @@ def train_and_predict(path, df=None,
     # Normalize the data by using the training mean and standard deviation
     train_mean = train_df.mean(axis=0)
     train_std = train_df.std(axis=0)
-    train_df = (train_df - train_mean) / train_std
-    test_df = (test_df - train_mean) / train_std
+    #train_df = (train_df - train_mean) / train_std
+    #test_df = (test_df - train_mean) / train_std
 
     window: SlidingWindowGenerator = SlidingWindowGenerator(
         input_width=input_width, label_width=future_predictions, shift=future_predictions,
@@ -133,7 +134,8 @@ def train_and_predict(path, df=None,
         f.write(json.dumps(performances, indent=4))
 
     if visualize:
-        window.plot(models, plot_path)
+        # due to MAPE explosion we scaled the gauge height by +100.0 at the Helen dataset
+        window.plot(models, plot_path, scale_by=scale)
         _plot_performance(performances, plot_path)
 
 
@@ -142,7 +144,7 @@ if __name__ == "__main__":
              "./datasets/time_series/chattahoochee-helen.csv",
              "./datasets/time_series/sweetwater-creek.csv"]
 
-    # run experiments for predicting the future in 3h, 6h, and 9h
+    # run experiments for predicting the gauge height in 3h, 6h, 9h, and 12h
     windows = [(100, 3 * 4), (100, 6 * 4), (100, 9 * 4), (100, 12 * 4)]
 
     for path in paths:
@@ -156,6 +158,8 @@ if __name__ == "__main__":
         for i, window in enumerate(windows):
             csv_name = path.split('/')[-1].split('.')[0]
             curr_plot_path = "results/" + csv_name + '/' + str(i) + '/'
+            scale = -100.0 if "helen" in path else 0.0
 
             train_and_predict("", df=df, input_width=window[0], future_predictions=window[1],
-                              visualize=True, plot_path=curr_plot_path)
+                              visualize=True, plot_path=curr_plot_path,
+                              scale=scale)
