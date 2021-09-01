@@ -102,10 +102,9 @@ class SlidingWindowGenerator:
 
             label_points = self._scale_list(labels[i, :, label_col_index], scale_by)
             plt.plot(self.label_indices, label_points,
-                     marker='o', label="Labels", c="#2ca02c")
+                     marker='.', label="Labels", c="green")
 
             if models:
-                markers = ['X', '^', 's', '*']
                 colors = ["red", "purple", "orange", "cyan"]
 
                 for j, model in enumerate(models):
@@ -113,7 +112,7 @@ class SlidingWindowGenerator:
                     prediction_points = self._scale_list(predictions[i, :, label_col_index],
                                                          scale_by)
                     plt.plot(self.label_indices, prediction_points,
-                             marker=markers[j], color=colors[j], label=model.name)
+                             color=colors[j], label=model.name)
 
             if i == 0:
                 plt.legend()

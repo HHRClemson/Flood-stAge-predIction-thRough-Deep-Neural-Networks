@@ -12,7 +12,7 @@ from predict_flooding.window_generator import SlidingWindowGenerator
 
 INPUT_WIDTH = 100
 FUTURE_PREDICTIONS = 36
-EPOCHS = 0
+EPOCHS = 75
 PATIENCE = max(5, EPOCHS // 5)
 EPSILON = 0.0000001  # add metrics by epsilon to prevent division by zero
 
@@ -25,14 +25,6 @@ def _wape(y, y_pred):
     return wape
 
 
-def _r_square(y, y_pred):
-    """R^2 metric, also known as coefficient of determination"""
-    residual = tf.reduce_sum(tf.square(tf.subtract(y, y_pred)))
-    total = tf.add(tf.reduce_sum(tf.square(tf.subtract(y, tf.reduce_mean(y)))), EPSILON)
-    r2 = tf.subtract(1.0, tf.divide(residual, total))
-    return r2
-
-
 def _run_model(model: Model, window: SlidingWindowGenerator,
                num_epochs=EPOCHS, patience=PATIENCE, fit_model=True):
     early_stopping = tf.keras.callbacks.EarlyStopping(
@@ -40,9 +32,7 @@ def _run_model(model: Model, window: SlidingWindowGenerator,
 
     model.compile(loss=tf.losses.MeanSquaredError(name="MSE"),
                   metrics=[tf.metrics.MeanAbsoluteError(name="MAE"),
-                           _r_square,
                            tf.metrics.RootMeanSquaredError(name="RMSE"),
-                           tf.metrics.MeanAbsolutePercentageError(name="MAPE"),
                            _wape],
                   optimizer=tf.optimizers.Adam())
 
@@ -60,16 +50,14 @@ def _plot_performance(performances, path):
     results = sorted(performances.items(), key=lambda x: x[1][1], reverse=True)
     model_names = [m[0].upper() for m in results]
 
+    mse = [m[1][0] for m in results]
     mae = [m[1][1] for m in results]
-    r2 = [m[1][2] for m in results]
-    rmse = [m[1][3] for m in results]
-    mape = [m[1][4] for m in results]
-    wape = [m[1][5] for m in results]
+    rmse = [m[1][2] for m in results]
+    wape = [m[1][3] for m in results]
 
-    metrics = [("Mean Absolute Error", mae),
-               ("R Squared Error", r2),
+    metrics = [("Mean Square Error", mse),
+               ("Mean Absolute Error", mae),
                ("Root Mean Square Error", rmse),
-               ("Mean Absolute Percentage Error", mape),
                ("Weighted Average Percentage Error", wape)]
 
     for metric in metrics:
@@ -100,8 +88,8 @@ def train_and_predict(path, df=None,
     # Normalize the data by using the training mean and standard deviation
     train_mean = train_df.mean(axis=0)
     train_std = train_df.std(axis=0)
-    #train_df = (train_df - train_mean) / train_std
-    #test_df = (test_df - train_mean) / train_std
+    train_df = (train_df - train_mean) / train_std
+    test_df = (test_df - train_mean) / train_std
 
     window: SlidingWindowGenerator = SlidingWindowGenerator(
         input_width=input_width, label_width=future_predictions, shift=future_predictions,
