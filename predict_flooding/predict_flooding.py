@@ -12,7 +12,7 @@ from predict_flooding.window_generator import SlidingWindowGenerator
 
 INPUT_WIDTH = 100
 FUTURE_PREDICTIONS = 36
-EPOCHS = 75
+EPOCHS = 50
 PATIENCE = max(5, EPOCHS // 5)
 EPSILON = 0.0000001  # add metrics by epsilon to prevent division by zero
 
@@ -33,7 +33,8 @@ def _run_model(model: Model, window: SlidingWindowGenerator,
     model.compile(loss=tf.losses.MeanSquaredError(name="MSE"),
                   metrics=[tf.metrics.MeanAbsoluteError(name="MAE"),
                            tf.metrics.RootMeanSquaredError(name="RMSE"),
-                           _wape],
+                           _wape,
+                           tf.metrics.MeanAbsolutePercentageError(name="MAPE")],
                   optimizer=tf.optimizers.Adam())
 
     history = model.fit(window.train_dataset, epochs=num_epochs,
@@ -54,11 +55,13 @@ def _plot_performance(performances, path):
     mae = [m[1][1] for m in results]
     rmse = [m[1][2] for m in results]
     wape = [m[1][3] for m in results]
+    mape = [m[1][4] for m in results]
 
     metrics = [("Mean Square Error", mse),
                ("Mean Absolute Error", mae),
                ("Root Mean Square Error", rmse),
-               ("Weighted Average Percentage Error", wape)]
+               ("Weighted Average Percentage Error", wape),
+               ("Mean Absolute Percentage Error", mape)]
 
     for metric in metrics:
         plt.bar(x, metric[1], label=metric[0])
@@ -122,7 +125,6 @@ def train_and_predict(path, df=None,
         f.write(json.dumps(performances, indent=4))
 
     if visualize:
-        # due to MAPE explosion we scaled the gauge height by +100.0 at the Helen dataset
         window.plot(models, plot_path, scale_by=scale)
         _plot_performance(performances, plot_path)
 
@@ -146,8 +148,6 @@ if __name__ == "__main__":
         for i, window in enumerate(windows):
             csv_name = path.split('/')[-1].split('.')[0]
             curr_plot_path = "results/" + csv_name + '/' + str(i) + '/'
-            scale = -100.0 if "helen" in path else 0.0
 
             train_and_predict("", df=df, input_width=window[0], future_predictions=window[1],
-                              visualize=True, plot_path=curr_plot_path,
-                              scale=scale)
+                              visualize=True, plot_path=curr_plot_path)
