@@ -4,7 +4,7 @@ import matplotlib.patches as mpatches
 
 plt.rc('xtick', labelsize=30)
 plt.rc('ytick', labelsize=30)
-plt.rcParams.update({'font.size': 23})
+plt.rcParams.update({'font.size': 24})
 
 # time points for forecasting
 X_POINTS = [3, 6, 9, 12]
@@ -39,15 +39,16 @@ def wape_plot():
     sweetwater = [sweetwater_dense, sweetwater_cnn, sweetwater_lstm]
 
     datasets = [columbus, helen, sweetwater]
-    plot_bars(datasets)
+    datasets = [(columbus, "columbus"), (helen, "helen"), (sweetwater, "sweetwater")]
+    plot_bars(datasets, "wape.png")
 
 
-def plot_bars(datasets):
+def plot_bars(datasets, suffix):
     colors = ["blue", "orange", "red"]
 
     width = 0.8
 
-    for dataset in datasets:
+    for dataset, ds_name in datasets:
         bars = []
         for i, t in enumerate(X_POINTS):
             curr_time = []
@@ -69,6 +70,8 @@ def plot_bars(datasets):
 
         plt.xlabel("Forecast time [h]")
         plt.ylabel("Weighted Average Percentage Error (WAPE)")
+        name = ds_name + "-" + suffix
+        #plt.savefig(name)
         plt.show()
 
 

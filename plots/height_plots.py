@@ -2,6 +2,9 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+plt.rc('xtick', labelsize=20)
+plt.rc('ytick', labelsize=20)
+plt.rcParams.update({'font.size': 20})
 
 def violin_plot(prefix):
     columbus = pd.read_csv(prefix + "chattahoochee-columbus.csv")
@@ -28,12 +31,17 @@ def distribution_plot(prefix):
      
     ax = sns.displot(columbus["height"], color="blue", palette="muted")
     ax.set(xlabel="Height [feet]")
+    plt.savefig("columbus-height.png",bbox_inches='tight')
+
 
     ax = sns.displot(helen["height"], color="green", palette="muted")
     ax.set(xlabel="Height [feet]")
+    plt.savefig("helen-height.png",bbox_inches='tight')
+
 
     ax = sns.displot(sweetwater["height"], color="orange", palette="muted")
     ax.set(xlabel="Height [feet]")
+    plt.savefig("sweetwater-height.png",bbox_inches='tight')
 
     plt.show()
 
