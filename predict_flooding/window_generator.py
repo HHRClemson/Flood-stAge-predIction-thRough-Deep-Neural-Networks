@@ -92,7 +92,7 @@ class SlidingWindowGenerator:
             plt.ylabel("{} [normed]".format(plot_col))
 
             input_points = self._scale_list(inputs[i, :, plot_col_index], scale_by)
-            plt.plot(self.input_indices, input_points,
+            plt.plot(self.input_indices[80:], input_points[80:],
                      label='Inputs', marker='.', zorder=-10)
 
             if self.label_columns:

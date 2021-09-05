@@ -5,24 +5,31 @@ from pprint import pprint
 
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import tensorflow.keras.backend as K
 from tensorflow.keras import Model
+
 
 from predict_flooding.models import *
 from predict_flooding.window_generator import SlidingWindowGenerator
 
 INPUT_WIDTH = 100
 FUTURE_PREDICTIONS = 36
-EPOCHS = 50
+EPOCHS = 1
 PATIENCE = max(5, EPOCHS // 5)
-EPSILON = 0.0000001  # add metrics by epsilon to prevent division by zero
 
 
 def _wape(y, y_pred):
     """Weighted Average Percentage Error metric in the interval [0; 100]"""
     nominator = tf.reduce_sum(tf.abs(tf.subtract(y, y_pred)))
-    denominator = tf.add(tf.reduce_sum(tf.abs(y)), EPSILON)
+    denominator = tf.add(tf.reduce_sum(tf.abs(y)), K.epsilon())
     wape = tf.scalar_mul(100.0, tf.divide(nominator, denominator))
     return wape
+
+
+def _r_square(y_true, y_pred):
+    SS_res = K.sum(K.square(y_true - y_pred))
+    SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
+    return 1 - SS_res / (SS_tot + K.epsilon())
 
 
 def _run_model(model: Model, window: SlidingWindowGenerator,
@@ -33,6 +40,7 @@ def _run_model(model: Model, window: SlidingWindowGenerator,
     model.compile(loss=tf.losses.MeanSquaredError(name="MSE"),
                   metrics=[tf.metrics.MeanAbsoluteError(name="MAE"),
                            tf.metrics.RootMeanSquaredError(name="RMSE"),
+                           _r_square,
                            _wape,
                            tf.metrics.MeanAbsolutePercentageError(name="MAPE")],
                   optimizer=tf.optimizers.Adam())
