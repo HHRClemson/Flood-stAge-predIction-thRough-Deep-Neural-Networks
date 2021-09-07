@@ -27,3 +27,11 @@ class CNN(Model):
 
     def get_config(self):
         return super(CNN, self).get_config()
+
+
+if __name__ == "__main__":
+    model = CNN(48)
+    m = model.model
+    m.build((None, *(100, 2)))
+    m.summary()
+    tf.keras.utils.plot_model(m, to_file="cnn.png", show_shapes=True)

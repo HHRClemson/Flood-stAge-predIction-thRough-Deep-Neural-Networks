@@ -23,3 +23,11 @@ class LSTM(Model):
 
     def get_config(self):
         return super(LSTM, self).get_config()
+
+
+if __name__ == "__main__":
+    model = LSTM(48)
+    m = model.model
+    m.build((None, *(100, 2)))
+    m.summary()
+    tf.keras.utils.plot_model(m, to_file="lstm.png", show_shapes=True)

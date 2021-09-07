@@ -24,3 +24,11 @@ class Dense(Model):
 
     def get_config(self):
         return super(Dense, self).get_config()
+
+
+if __name__ == "__main__":
+    model = Dense(48)
+    m = model.model
+    m.build((None, *(100, 2)))
+    m.summary()
+    tf.keras.utils.plot_model(m, to_file="dense.png", show_shapes=True)
