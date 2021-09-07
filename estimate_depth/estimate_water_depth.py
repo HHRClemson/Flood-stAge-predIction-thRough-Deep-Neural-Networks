@@ -54,16 +54,6 @@ def _load_dataset(path, round_to=15):
         key = _get_csv_key_from_file(f, round_to=round_to)
         gauge_height = np.float32(heights[key])
 
-        if gauge_height >= 2.0:
-            #pass
-            #"""
-            x_val.append(img)
-            y_val.append(gauge_height)
-            x_train.append(img)
-            y_train.append(gauge_height)
-            continue
-            #"""
-
         # the size of the validation set is 10% of the original dataset
         if i % 8 == 0:
             x_val.append(img)
@@ -71,6 +61,10 @@ def _load_dataset(path, round_to=15):
         else:
             x_train.append(img)
             y_train.append(gauge_height)
+
+        if i == 6:
+            break
+
     return np.asarray(x_train), np.asarray(y_train), np.asarray(x_val), np.asarray(y_val)
 
 
@@ -97,13 +91,11 @@ def train_and_predict(dataset_path, round_to=15, bayesian=False):
         model: Model = cnn.create_cnn_model(x_train[0].shape)
     model.summary()
 
-    #callback = tf.keras.callbacks.EarlyStopping(monitor="loss", patience=10)
     history = model.fit(
         x_train, y_train,
         epochs=100,
         validation_data=(x_val, y_val),
         shuffle=True,
-        #callbacks=[callback]
     )
 
     val_set_size = len(y_val)
