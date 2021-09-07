@@ -11,8 +11,5 @@ if __name__ == "__main__":
 
     #picture_dataset_path = "./datasets/webcam_images/Shamrock/" # round_to = 5
     picture_dataset_path = "./datasets/webcam_images/ChattahoocheeRiver/" # round_to = 15
-    #picture_dataset_path = "./datasets/webcam_images/YellowRiver/"  # round_to = 15
     depth_estimator.train_and_predict(picture_dataset_path, round_to=15, bayesian=args.bayes)
 
-    #flooding_dataset_path = "./datasets/time_series/chattahoochee.csv"
-    #flooding_predictor.train_and_predict(flooding_dataset_path)

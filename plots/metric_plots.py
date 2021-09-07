@@ -1,4 +1,5 @@
 """Sorry for this ugly code, deadline is getting a bit tight."""
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
@@ -10,19 +11,7 @@ plt.rcParams.update({'font.size': 24})
 X_POINTS = [3, 6, 9, 12]
 
 
-def mae_plot():
-    pass
-
-
-def mse_plot():
-    pass
-
-
-def rmse_plot():
-    pass
-
-
-def wape_plot():
+def wape_plot_flood():
     columbus_dense = [12, 25, 43, 66.602]
     columbus_cnn = [9, 15, 27, 39.4]
     columbus_lstm = [1.5, 4.1, 5.8, 7.8]
@@ -38,12 +27,45 @@ def wape_plot():
     sweetwater_lstm = [1.35, 3.62, 6.4, 8.06]
     sweetwater = [sweetwater_dense, sweetwater_cnn, sweetwater_lstm]
 
-    datasets = [columbus, helen, sweetwater]
     datasets = [(columbus, "columbus"), (helen, "helen"), (sweetwater, "sweetwater")]
-    plot_bars(datasets, "wape.png")
+    plot_bars_flood(datasets, "wape.png")
 
 
-def plot_bars(datasets, suffix):
+def plot_depth():
+    #columbus_segmentation = 0.6918
+    #columbus_no_segmentation = 3.6228
+    columbus_segmentation = 0.0654
+    columbus_no_segmentation = 0.3310
+
+    #sweetwater_segmentation = 1.028
+    #sweetwater_no_segmentation = 1.5540
+    sweetwater_segmentation = 0.0035
+    sweetwater_no_segmentation = 0.0049
+
+    segmentation = [columbus_segmentation, sweetwater_segmentation]
+    non_segmentation = [columbus_no_segmentation, sweetwater_no_segmentation]
+    X = np.arange(2)
+
+    plt.bar(X - 0.2, segmentation, color="blue", width=0.4)
+    plt.bar(X + 0.2, non_segmentation, color="orange", width=0.4)
+
+    for x, y in [(0 - 0.2, segmentation[0]), (0 + 0.2, non_segmentation[0]),
+                 (1 - 0.2, segmentation[1]), (1 + 0.2, non_segmentation[1])]:
+
+        plt.text(x, y + 0.01, str(y), fontweight="bold", ha="center")
+
+    plt.xticks(X, ["Columbus", "Sweetwater Creek"])
+
+    blue_patch = mpatches.Patch(color='blue', label='with U-Net')
+    orange_patch = mpatches.Patch(color='orange', label='without U-Net')
+    plt.legend(handles=[blue_patch, orange_patch])
+    plt.ylabel("Mean Absolute Error (MAE) [feet]")
+    plt.axis([-0.5, 1.5, 0, 0.4])
+
+    plt.show()
+
+
+def plot_bars_flood(datasets, suffix):
     colors = ["blue", "orange", "red"]
 
     width = 0.8
@@ -76,7 +98,5 @@ def plot_bars(datasets, suffix):
 
 
 if __name__ == "__main__":
-    mae_plot()
-    mse_plot()
-    rmse_plot()
-    wape_plot()
+    #wape_plot_flood()
+    plot_depth()

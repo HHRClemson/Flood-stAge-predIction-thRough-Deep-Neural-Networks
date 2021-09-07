@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 
 import generate_data.segmentation as segmentation
 import estimate_depth.models.cnn as cnn
-#import estimate_depth.bcnn as bcnn
 
 IMG_WIDTH = 512
 IMG_HEIGHT = 512
@@ -62,9 +61,6 @@ def _load_dataset(path, round_to=15):
             x_train.append(img)
             y_train.append(gauge_height)
 
-        if i == 6:
-            break
-
     return np.asarray(x_train), np.asarray(y_train), np.asarray(x_val), np.asarray(y_val)
 
 
@@ -77,63 +73,42 @@ def _plot_model(history):
     plt.show()
 
 
-def train_and_predict(dataset_path, round_to=15, bayesian=False):
-    x_train, y_train, x_val, y_val = _load_dataset(dataset_path, round_to=round_to)
+def train_and_predict(dataset_path, round_to=15):
+    x_train, y_train, x_test, y_test = _load_dataset(dataset_path, round_to=round_to)
 
     x_train = segmentation.predict_on_learned_model(x_train)
-    x_val = segmentation.predict_on_learned_model(x_val)
-    print(len(x_train), len(x_val))
+    x_test = segmentation.predict_on_learned_model(x_test)
+    print(len(x_train), len(x_test))
 
-    if bayesian:
-        #model: Model = bcnn.create_bcnn_model(len(y_train), x_train[0].shape)
-        raise NotImplementedError()
-    else:
-        model: Model = cnn.create_cnn_model(x_train[0].shape)
+    model: Model = cnn.create_cnn_model(x_train[0].shape)
     model.summary()
 
     history = model.fit(
         x_train, y_train,
         epochs=100,
-        validation_data=(x_val, y_val),
         shuffle=True,
     )
 
-    val_set_size = len(y_val)
-    predictions = model.predict(x_val)
+    result = model.evaluate(x_test, y_test)
+    performance = dict(zip(model.metrics_names, result))
+    print("Result:", performance)
 
-    if bayesian:
-        """
-        If we trained our model on a bayesian CNN, we can now predict various
-        statistical measurements. Here we calculate the mean and the min and max 
-        of one standard deviation from the mean.
-        """
-        prediction_mean = np.mean(predictions, axis=1)
-        prediction_min = np.min(predictions, axis=1)
-        prediction_max = np.max(predictions, axis=1)
-        prediction_range = np.max(predictions, axis=1) - np.min(predictions, axis=1)
-    else:
-        prediction_mean = np.repeat(np.NaN, val_set_size, axis=0)
-        prediction_min = np.repeat(np.NaN, val_set_size, axis=0)
-        prediction_max = np.repeat(np.NaN, val_set_size, axis=0)
-        prediction_range = np.repeat(np.NaN, val_set_size, axis=0)
+    test_set_size = len(y_test)
+    predictions = model.predict(x_test)
 
     compare = pd.DataFrame(data={
-        "original": y_val.reshape((val_set_size,)),
-        "predictions": predictions.reshape((val_set_size,)),
-        #"mean": prediction_mean.reshape((val_set_size,)),
-        #"min": prediction_min.reshape((val_set_size,)),
-        #"max": prediction_max.reshape((val_set_size,)),
-        #"range": prediction_range.reshape((val_set_size,)),
+        "original": y_test.reshape((test_set_size,)),
+        "predictions": predictions.reshape((test_set_size,)),
     })
     print(compare)
 
-    relative_errors = [abs(pred - truth) / truth for pred, truth in zip(predictions, y_val)]
-    avg_relative_error = sum(relative_errors) / val_set_size
-    median_relative_error = sorted(relative_errors)[val_set_size // 2]
+    relative_errors = [abs(pred - truth) / truth for pred, truth in zip(predictions, y_test)]
+    avg_relative_error = sum(relative_errors) / test_set_size
+    median_relative_error = sorted(relative_errors)[test_set_size // 2]
     max_relative_error = max(relative_errors)
 
     print("Avg relative error:", avg_relative_error)
     print("Median relative error:", median_relative_error)
     print("Max relative error:", max_relative_error)
 
-    _plot_model(history)
+    # _plot_model(history)

@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tensorflow.keras.backend as K
 from tensorflow.keras import models, Model, layers
 
 
@@ -26,7 +27,7 @@ def create_cnn_model(img_shapes) -> Model:
     cnn.add(layers.Dense(1, activation="linear"))
 
     cnn.compile(
-        optimizer="adam",
+        optimizer=tf.optimizers.Adam(),
         loss=tf.keras.losses.MeanSquaredError(),
         metrics=[tf.metrics.MeanAbsoluteError(name="MAE"),
                  tf.metrics.RootMeanSquaredError(name="RMSE"),
