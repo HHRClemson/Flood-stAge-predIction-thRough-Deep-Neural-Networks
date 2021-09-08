@@ -14,7 +14,7 @@ from predict_flooding.window_generator import SlidingWindowGenerator
 
 INPUT_WIDTH = 100
 FUTURE_PREDICTIONS = 36
-EPOCHS = 1
+EPOCHS = 50
 PATIENCE = max(5, EPOCHS // 5)
 
 
@@ -26,12 +26,6 @@ def _wape(y, y_pred):
     return wape
 
 
-def _r_square(y_true, y_pred):
-    SS_res = K.sum(K.square(y_true - y_pred))
-    SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
-    return 1 - SS_res / (SS_tot + K.epsilon())
-
-
 def _run_model(model: Model, window: SlidingWindowGenerator,
                num_epochs=EPOCHS, patience=PATIENCE, fit_model=True):
     early_stopping = tf.keras.callbacks.EarlyStopping(
@@ -40,7 +34,6 @@ def _run_model(model: Model, window: SlidingWindowGenerator,
     model.compile(loss=tf.losses.MeanSquaredError(name="MSE"),
                   metrics=[tf.metrics.MeanAbsoluteError(name="MAE"),
                            tf.metrics.RootMeanSquaredError(name="RMSE"),
-                           _r_square,
                            _wape,
                            tf.metrics.MeanAbsolutePercentageError(name="MAPE")],
                   optimizer=tf.optimizers.Adam())

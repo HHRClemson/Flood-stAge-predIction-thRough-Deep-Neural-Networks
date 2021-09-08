@@ -12,23 +12,43 @@ X_POINTS = [3, 6, 9, 12]
 
 
 def wape_plot_flood():
-    columbus_dense = [12, 25, 43, 66.602]
-    columbus_cnn = [9, 15, 27, 39.4]
-    columbus_lstm = [1.5, 4.1, 5.8, 7.8]
+    columbus_dense = [4.259, 5.967, 19.728, 38.796]
+    columbus_cnn = [6.222, 8.134, 15.103, 24.102]
+    columbus_lstm = [3.17, 5.505, 6.802, 12.8]
     columbus = [columbus_dense, columbus_cnn, columbus_lstm]
 
-    helen_dense = [14, 17, 29, 39.897]
-    helen_cnn = [7, 13, 28, 42.048]
+    helen_dense = [6.746, 12.339, 24.483, 37.318]
+    helen_cnn = [11.223, 24.484, 37.318, 46.048]
     helen_lstm = [2.3, 4.02, 7.6, 11.926]
     helen = [helen_dense, helen_cnn, helen_lstm]
 
-    sweetwater_dense = [11, 15, 24, 30]
-    sweetwater_cnn = [6, 14, 26, 35]
-    sweetwater_lstm = [1.35, 3.62, 6.4, 8.06]
+    sweetwater_dense = [7.631, 10.054, 20.053, 33.128]
+    sweetwater_cnn = [16.177, 22.901, 25.237, 28.016]
+    sweetwater_lstm = [4.92, 6.153, 15.288, 21.277]
     sweetwater = [sweetwater_dense, sweetwater_cnn, sweetwater_lstm]
 
     datasets = [(columbus, "columbus"), (helen, "helen"), (sweetwater, "sweetwater")]
     plot_bars_flood(datasets, "wape.png")
+
+
+def mae_plot_flood():
+    columbus_dense = [0.199, 0.302, 0.373, 0.403]
+    columbus_cnn = [0.224, 0.361, 0.395, 0.406]
+    columbus_lstm = [0.166, 0.245, 0.293, 0.304]
+    columbus = [columbus_dense, columbus_cnn, columbus_lstm]
+
+    helen_dense = [0.098, 0.144, 0.177, 0.211]
+    helen_cnn = [0.093, 0.136, 0.181, 0.223]
+    helen_lstm = [0.083, 0.133, 0.156, 0.181]
+    helen = [helen_dense, helen_cnn, helen_lstm]
+
+    sweetwater_dense = [0.077, 0.107, 0.138, 0.175]
+    sweetwater_cnn = [0.087, 0.121, 0.128, 0.149]
+    sweetwater_lstm = [0.027, 0.065, 0.103, 0.102]
+    sweetwater = [sweetwater_dense, sweetwater_cnn, sweetwater_lstm]
+
+    datasets = [(columbus, "columbus"), (helen, "helen"), (sweetwater, "sweetwater")]
+    plot_bars_flood(datasets, "mae.png")
 
 
 def plot_depth():
@@ -82,7 +102,7 @@ def plot_bars_flood(datasets, suffix):
             for j, val in enumerate(bar):
                 plt.xticks(ticks=X_POINTS, label="min")
                 plt.bar(X_POINTS[i] + (j - 1) * width, val, width, color=colors[j])
-                plt.text(X_POINTS[i] + (j - 1) * width, val + 0.75, str(val) + '%',
+                plt.text(X_POINTS[i] + (j - 1) * width, val + 0.005, str(round(val, 2)) + '%',
                          fontweight='bold', ha='center')
 
         blue_patch = mpatches.Patch(color='blue', label='Dense')
@@ -98,5 +118,6 @@ def plot_bars_flood(datasets, suffix):
 
 
 if __name__ == "__main__":
-    #wape_plot_flood()
-    plot_depth()
+    wape_plot_flood()
+    #mae_plot_flood()
+    #plot_depth()
