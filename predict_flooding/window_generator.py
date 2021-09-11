@@ -4,6 +4,10 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
+plt.rc('xtick', labelsize=24)
+plt.rc('ytick', labelsize=24)
+plt.rcParams.update({'font.size': 16})
+
 
 class SlidingWindowGenerator:
     """
@@ -74,11 +78,7 @@ class SlidingWindowGenerator:
 
         return ds.map(self.split_window)
 
-    @staticmethod
-    def _scale_list(l, scale_by):
-        return list(map(lambda x: x + scale_by, l))
-
-    def plot(self, models: [Optional[tf.keras.Model]], path, max_subplots=3, scale_by=0.0):
+    def plot(self, models: [Optional[tf.keras.Model]], path, max_subplots=3):
         """Plot batches of the training dataset for visual results."""
         plot_data = iter(self.train_dataset)
         plt.figure(figsize=(12, 8))
@@ -91,8 +91,7 @@ class SlidingWindowGenerator:
             plt.subplot(max_subplots, 1, i + 1)
             plt.ylabel("{} [normed]".format(plot_col))
 
-            input_points = self._scale_list(inputs[i, :, plot_col_index], scale_by)
-            plt.plot(self.input_indices[80:], input_points[80:],
+            plt.plot(self.input_indices[80:], inputs[i, :, plot_col_index][80:],
                      label='Inputs', marker='.', zorder=-10)
 
             if self.label_columns:
@@ -100,8 +99,7 @@ class SlidingWindowGenerator:
             else:
                 label_col_index = plot_col_index
 
-            label_points = self._scale_list(labels[i, :, label_col_index], scale_by)
-            plt.plot(self.label_indices, label_points,
+            plt.plot(self.label_indices, labels[i, :, label_col_index],
                      marker='.', label="Labels", c="green")
 
             if models:
@@ -109,9 +107,7 @@ class SlidingWindowGenerator:
 
                 for j, model in enumerate(models):
                     predictions = model(inputs)
-                    prediction_points = self._scale_list(predictions[i, :, label_col_index],
-                                                         scale_by)
-                    plt.plot(self.label_indices, prediction_points,
+                    plt.plot(self.label_indices, predictions[i, :, label_col_index],
                              color=colors[j], label=model.name)
 
             if i == 0:

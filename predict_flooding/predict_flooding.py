@@ -77,8 +77,7 @@ def _plot_performance(performances, path):
 
 def train_and_predict(path, df=None,
                       input_width=INPUT_WIDTH, future_predictions=FUTURE_PREDICTIONS,
-                      visualize=True, plot_path="flooding_results/",
-                      scale=0.0):
+                      visualize=True, plot_path="flooding_results/"):
     if df is None:
         df = pd.read_csv(path)
         df = df.drop("time", axis=1)
@@ -126,13 +125,13 @@ def train_and_predict(path, df=None,
         f.write(json.dumps(performances, indent=4))
 
     if visualize:
-        window.plot(models, plot_path, scale_by=scale)
+        window.plot(models, plot_path)
         _plot_performance(performances, plot_path)
 
 
 if __name__ == "__main__":
-    paths = ["./datasets/time_series/chattahoochee-columbus.csv",
-             "./datasets/time_series/chattahoochee-helen.csv",
+    paths = ["./datasets/time_series/perception/chattahoochee-columbus.csv",
+             "./datasets/time_series/perception/chattahoochee-helen.csv",
              "./datasets/time_series/sweetwater-creek.csv"]
 
     # run experiments for predicting the gauge height in 3h, 6h, 9h, and 12h
