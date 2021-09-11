@@ -6,7 +6,6 @@ import tensorflow as tf
 
 plt.rc('xtick', labelsize=24)
 plt.rc('ytick', labelsize=24)
-plt.rcParams.update({'font.size': 16})
 
 
 class SlidingWindowGenerator:
@@ -111,7 +110,8 @@ class SlidingWindowGenerator:
                              color=colors[j], label=model.name)
 
             if i == 0:
-                plt.legend()
+                plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.19),
+                           fancybox=True, shadow=True, ncol=6)
 
         plt.xlabel('Time [15min]')
 
