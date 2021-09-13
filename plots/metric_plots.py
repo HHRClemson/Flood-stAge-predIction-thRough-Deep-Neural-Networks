@@ -3,9 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
-plt.rc('xtick', labelsize=30)
-plt.rc('ytick', labelsize=30)
-plt.rcParams.update({'font.size': 24})
+plt.rc('xtick', labelsize=34)
+plt.rc('ytick', labelsize=34)
+plt.rcParams.update({'font.size': 28})
 
 # time points for forecasting
 X_POINTS = [3, 6, 9, 12]
@@ -52,15 +52,15 @@ def mae_plot_flood():
 
 
 def plot_depth():
-    #columbus_segmentation = 0.6918
-    #columbus_no_segmentation = 3.6228
-    columbus_segmentation = 0.0654
-    columbus_no_segmentation = 0.3310
+    columbus_segmentation = 0.6918
+    columbus_no_segmentation = 3.6228
+    #columbus_segmentation = 0.0654
+    #columbus_no_segmentation = 0.3310
 
-    #sweetwater_segmentation = 1.028
-    #sweetwater_no_segmentation = 1.5540
-    sweetwater_segmentation = 0.0035
-    sweetwater_no_segmentation = 0.0049
+    sweetwater_segmentation = 1.028
+    sweetwater_no_segmentation = 1.5540
+    #sweetwater_segmentation = 0.0035
+    #sweetwater_no_segmentation = 0.0049
 
     segmentation = [columbus_segmentation, sweetwater_segmentation]
     non_segmentation = [columbus_no_segmentation, sweetwater_no_segmentation]
@@ -79,8 +79,8 @@ def plot_depth():
     blue_patch = mpatches.Patch(color='blue', label='with U-Net')
     orange_patch = mpatches.Patch(color='orange', label='without U-Net')
     plt.legend(handles=[blue_patch, orange_patch])
-    plt.ylabel("Mean Absolute Error (MAE) [feet]")
-    plt.axis([-0.5, 1.5, 0, 0.4])
+    plt.ylabel("Mean Absolute Percentage Error (MAPE) [%]")
+    #plt.axis([-0.5, 1.5, 0, 0.4])
 
     plt.show()
 
@@ -118,6 +118,6 @@ def plot_bars_flood(datasets, suffix):
 
 
 if __name__ == "__main__":
-    wape_plot_flood()
+    #wape_plot_flood()
     #mae_plot_flood()
-    #plot_depth()
+    plot_depth()
