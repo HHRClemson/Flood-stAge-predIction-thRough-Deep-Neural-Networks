@@ -20,12 +20,19 @@ def _get_mask(labels, shape):
     return mask
 
 
+def _convert_image(image):
+    """
+    Resize and crop the image to 'IMG_WIDTH x IMG_HEIGHT' and normalize it from
+    the interval [0, 255] to [0, 1].
+    """
+    return tf.cast(tf.image.resize_with_pad(image, IMG_WIDTH, IMG_HEIGHT), np.uint8) / 255
+
+
 def _load_dataset(path):
     segmentations = json.load(open(path + "segmentation.json"))
     keys = list(segmentations.keys())
 
-    x_train, y_train = [], []
-    x_val, y_val = [], []
+    x, y = [], []
 
     for i, img_name in enumerate(keys):
         # the img key in the json labels always has a random number at the end of the name
@@ -41,17 +48,10 @@ def _load_dataset(path):
 
         mask = _get_mask(labels, img.shape[:2])
 
-        img = tf.cast(tf.image.resize_with_pad(img, IMG_WIDTH, IMG_HEIGHT), np.uint8) / 255
-        mask = tf.cast(tf.image.resize_with_pad(mask, IMG_WIDTH, IMG_HEIGHT), np.uint8) / 255
+        x.append(_convert_image(img))
+        y.append(_convert_image(mask))
 
-        # the size of the validation set is 20% of the original dataset
-        if i % 5 == 0:
-            x_val.append(img)
-            y_val.append(mask)
-        else:
-            x_train.append(img)
-            y_train.append(mask)
-    return x_train, y_train, x_val, y_val
+    return x, y
 
 
 def _load_kaggle_dataset(path):
@@ -159,36 +159,39 @@ def _display(images, name=None):
 
 def train_and_predict():
     """Train the U-Net model for segmentation and save the model"""
-    x_train, y_train, = _load_kaggle_dataset("../datasets/kaggle/")
-    x_train_webcam, y_train_webcam, x_val, y_val = _load_dataset("../datasets/segmentation/")
+    x_kaggle, y_kaggle, = _load_kaggle_dataset("../datasets/kaggle/")
+    x_train_webcam, y_train_webcam = _load_dataset("../datasets/segmentation/")
 
-    x_train.extend(x_train_webcam)
-    y_train.extend(y_train_webcam)
+    x_kaggle.extend(x_train_webcam)
+    y_kaggle.extend(y_train_webcam)
 
-    x_train = np.array(x_train)
-    y_train = np.array(y_train)
-    x_val = np.array(x_val)
-    y_val = np.array(y_val)
+    x_kaggle = np.array(x_kaggle)
+    y_kaggle = np.array(y_kaggle)
 
     model: Model = _create_model()
     model.summary()
       
     history = model.fit(
-        x_train, y_train,
+        x_kaggle, y_kaggle,
         epochs=150,
         batch_size=20,
-        #validation_data=(x_val, y_val)
     )
     model.save("saved_models/u-net")        
 
-    predictions = model.predict(x_val)
 
-    results = []
-    for i in range(len(x_val)):
-        res = [x_val[i], y_val[i], predictions[i]]
-        results.append(res)
-        _display([res], name=str(i) + ".svg")
-    _display(results, name="segmentation-results.svg")
+def display_segmentation(images):
+    # Compile the model by ourselves since _dice_loss and _dice_coef are not subclassing keras.metrics
+    u_net: Model = tf.keras.models.load_model("generate_data/saved_models/u-net/", compile=False)
+    u_net.compile(
+        optimizer=tf.keras.optimizers.Nadam(1e-4),
+        loss=_dice_loss,
+        metrics=[_dice_coef, metrics.Recall(), metrics.Precision()]
+    )
+
+    predictions = u_net.predict(images)
+
+    for prediction in predictions:
+        _display([prediction])
 
 
 def predict_on_learned_model(images):
