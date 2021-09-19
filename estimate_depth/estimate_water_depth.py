@@ -5,6 +5,7 @@ import cv2
 
 import tensorflow as tf
 from tensorflow.keras import Model
+from sklearn.model_selection import KFold
 
 import matplotlib.pyplot as plt
 
@@ -35,8 +36,7 @@ def _get_csv_key_from_file(filename, round_to=15):
 
 
 def _load_dataset(path, round_to=15):
-    x_train, y_train = [], []
-    x_val, y_val = [], []
+    x, y = [], []
 
     heights = dict(pd.read_csv(path + "labels.csv").to_numpy())
     files = os.listdir(path)
@@ -53,15 +53,10 @@ def _load_dataset(path, round_to=15):
         key = _get_csv_key_from_file(f, round_to=round_to)
         gauge_height = np.float32(heights[key])
 
-        # the size of the validation set is 10% of the original dataset
-        if i % 8 == 0:
-            x_val.append(img)
-            y_val.append(gauge_height)
-        else:
-            x_train.append(img)
-            y_train.append(gauge_height)
+        x.append(img)
+        y.append(gauge_height)
 
-    return np.asarray(x_train), np.asarray(y_train), np.asarray(x_val), np.asarray(y_val)
+    return np.asarray(x), np.asarray(y)
 
 
 def _plot_model(history):
@@ -73,42 +68,33 @@ def _plot_model(history):
     plt.show()
 
 
-def train_and_predict(dataset_path, round_to=15):
-    x_train, y_train, x_test, y_test = _load_dataset(dataset_path, round_to=round_to)
+def train_and_predict(dataset_path, n_folds=10, round_to=15):
+    x, y = _load_dataset(dataset_path, round_to=round_to)
+    x = segmentation.predict_on_learned_model(x)
+    input_shape = x[0].shape
 
-    x_train = segmentation.predict_on_learned_model(x_train)
-    x_test = segmentation.predict_on_learned_model(x_test)
-    print(len(x_train), len(x_test))
+    kf = KFold(n_splits=n_folds, shuffle=True)
 
-    model: Model = cnn.create_cnn_model(x_train[0].shape)
-    model.summary()
+    best_loss = float("inf")
+    best_performance = None
 
-    history = model.fit(
-        x_train, y_train,
-        epochs=100,
-        shuffle=True,
-    )
+    for train_index, test_index in kf.split(x):
+        x_train, x_test = x[train_index], x[test_index]
+        y_train, y_test = y[train_index], y[test_index]
+        print("len train:", len(x_train))
+        print("len test:", len(x_test))
 
-    result = model.evaluate(x_test, y_test)
-    performance = dict(zip(model.metrics_names, result))
-    print("Result:", performance)
+        model: Model = cnn.create_cnn_model(input_shape)
+        model.fit(
+            x_train, y_train,
+            epochs=100,
+        )
 
-    test_set_size = len(y_test)
-    predictions = model.predict(x_test)
+        result = model.evaluate(x_test, y_test)
+        performance = dict(zip(model.metrics_names, result))
 
-    compare = pd.DataFrame(data={
-        "original": y_test.reshape((test_set_size,)),
-        "predictions": predictions.reshape((test_set_size,)),
-    })
-    print(compare)
+        if performance["loss"] < best_loss:
+            best_loss = performance["loss"]
+            best_performance = performance
 
-    relative_errors = [abs(pred - truth) / truth for pred, truth in zip(predictions, y_test)]
-    avg_relative_error = sum(relative_errors) / test_set_size
-    median_relative_error = sorted(relative_errors)[test_set_size // 2]
-    max_relative_error = max(relative_errors)
-
-    print("Avg relative error:", avg_relative_error)
-    print("Median relative error:", median_relative_error)
-    print("Max relative error:", max_relative_error)
-
-    # _plot_model(history)
+    print("Best performance:", best_performance)
