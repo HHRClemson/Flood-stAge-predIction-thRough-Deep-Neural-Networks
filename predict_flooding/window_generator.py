@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from typing import Optional
 
 import matplotlib.pyplot as plt
@@ -41,6 +42,11 @@ class SlidingWindowGenerator:
         self.label_start = self.total_window_size - self.label_width
         self.labels_slice = slice(self.label_start, None)
         self.label_indices = np.arange(self.total_window_size)[self.labels_slice]
+
+    @property
+    def dataset(self):
+        """Generate a complete dataset without any training / testing split"""
+        return self.make_dataset(pd.concat([self.train_df, self.test_df]))
 
     @property
     def train_dataset(self):

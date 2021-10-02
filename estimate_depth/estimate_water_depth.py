@@ -9,7 +9,7 @@ from sklearn.model_selection import KFold
 
 import matplotlib.pyplot as plt
 
-import generate_data.segmentation as segmentation
+import estimate_depth.segmentation as segmentation
 import estimate_depth.models.cnn as cnn
 
 IMG_WIDTH = 512
@@ -72,7 +72,6 @@ def train_and_predict(dataset_path, n_folds=10, round_to=15):
     x, y = _load_dataset(dataset_path, round_to=round_to)
     x = segmentation.predict_on_learned_model(x)
     input_shape = x[0].shape
-
     kf = KFold(n_splits=n_folds, shuffle=True)
 
     best_loss = float("inf")

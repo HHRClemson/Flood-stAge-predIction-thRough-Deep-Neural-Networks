@@ -202,5 +202,4 @@ def predict_on_learned_model(images):
         loss=_dice_loss,
         metrics=[_dice_coef, metrics.Recall(), metrics.Precision()]
     )
-
     return u_net.predict(images)
