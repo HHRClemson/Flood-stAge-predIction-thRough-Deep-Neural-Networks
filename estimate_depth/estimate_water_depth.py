@@ -9,7 +9,7 @@ from sklearn.model_selection import KFold
 
 import matplotlib.pyplot as plt
 
-import estimate_depth.segmentation as segmentation
+import estimate_depth.models.segmentation as segmentation
 import estimate_depth.models.cnn as cnn
 
 IMG_WIDTH = 512
