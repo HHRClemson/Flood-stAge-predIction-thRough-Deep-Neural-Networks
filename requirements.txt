@@ -3,4 +3,4 @@ pandas==1.3.2
 tensorflow==2.6.0
 opencv_python==4.5.2.52
 matplotlib==3.4.3
-seaborn==0.11.2
+scikit_learn==1.0
