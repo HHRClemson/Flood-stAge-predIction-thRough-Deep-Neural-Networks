@@ -1,7 +1,7 @@
 #  An End-to-End Flood Detection System Using Deep Neural Networks
 
 ## Overview
-This is the official code repository for the paper `FloodStat: An End-to-End Flood Detection System Using Ensemble Neural Networks` by Windheuser, Pally, Samadi, and Hubig.
+This is the official code repository for the paper `An End-to-End Flood Detection System Using Deep Neural Networks` by Windheuser, Pally, Samadi, and Hubig.
 
 It consists out of the following two systems:
 
