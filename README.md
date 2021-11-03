@@ -18,4 +18,10 @@ Our scraped images are available [here](https://syncandshare.lrz.de/getlink/fiMs
 
 For the flood predictions, the USGS is providing various climate data as a csv file for different rivers, which were used as a time-series dataset.
 
+## Authors
+
+* **Leon Windheuser** 
+* **Rakshit Pally** 
+* **Dr. Vidya Samadi** 
+* **Dr. Nina Hubig** 
 
