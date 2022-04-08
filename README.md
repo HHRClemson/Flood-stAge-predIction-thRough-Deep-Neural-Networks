@@ -1,4 +1,4 @@
-#  DANGER:	Deep neurAl Networks for Gauge hEight pRediction
+#  FAIRDNN-Flood-gAuge-heIght-pRediction-using-Deep-Neural-Networks
 
 ## Overview
 This is the official code repository for the paper `An End-to-End Flood Detection System Using Deep Neural Networks` by Windheuser, Pally, Samadi, and Hubig.
