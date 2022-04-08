@@ -1,4 +1,4 @@
-#  An End-to-End Flood Detection System Using Deep Neural Networks
+#  DANGER:	Deep neurAl Networks for Gauge hEight pRediction
 
 ## Overview
 This is the official code repository for the paper `An End-to-End Flood Detection System Using Deep Neural Networks` by Windheuser, Pally, Samadi, and Hubig.
@@ -21,6 +21,7 @@ For the flood predictions, the USGS is providing various climate data as a csv f
 ## Authors
 
 * **Leon Windheuser** 
+* **Rishav Karanjit**
 * **Rakshit Pally** 
 * **Dr. Vidya Samadi** 
 * **Dr. Nina Hubig** 
