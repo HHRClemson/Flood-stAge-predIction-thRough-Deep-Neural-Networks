@@ -1,7 +1,15 @@
-#  FAIRDNN-Flood-gAuge-heIght-pRediction-using-Deep-Neural-Networks
+<h1 align="center">FAIRDNN <br>
+Flood-gAuge-heIght-pRediction-using-Deep-Neural-Networks
+</h1>
+
+<h3 align="center">
+  
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+  [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)<br>
+</h3>
 
 ## Overview
-This is the official code repository for the paper `An End-to-End Flood Detection System Using Deep Neural Networks` by Windheuser, Pally, Samadi, and Hubig.
+This is the official code repository for the paper `An End-to-End Flood Detection System Using Deep Neural Networks` by Windheuser, Karanjit, Pally, Samadi, and Hubig.
 
 It consists out of the following two systems:
 
