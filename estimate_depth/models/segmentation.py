@@ -156,7 +156,6 @@ def _display(images, name=None):
     plt.show()
     plt.close()
 
-
 def train_and_predict():
     """Train the U-Net model for segmentation and save the model"""
     x_kaggle, y_kaggle, = _load_kaggle_dataset("../datasets/kaggle/")
