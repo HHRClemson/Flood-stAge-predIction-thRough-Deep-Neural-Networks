@@ -1,5 +1,5 @@
 <h1 align="center">FAIRDNN <br>
-Flood-gAuge-heIght-pRediction-using-Deep-Neural-Networks
+Flood stAge predIction thRough Deep Neural Networks
 </h1>
 
 <h3 align="center">
