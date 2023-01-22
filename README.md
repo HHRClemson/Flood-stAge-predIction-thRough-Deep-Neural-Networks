@@ -9,7 +9,7 @@ Flood stAge predIction thRough Deep Neural Networks
 </h3>
 
 ## Overview
-This is the official code repository for the paper `An End-to-End Flood Detection System Using Deep Neural Networks` by Windheuser, Karanjit, Pally, Samadi, and Hubig.
+This is the official code repository for the paper [An End-to-End Flood Detection System Using Deep Neural Networks (2023)](https://doi.org/10.1029/2022EA002385) by Windheuser, Karanjit, Pally, Samadi, and Hubig.
 
 It consists out of the following two systems:
 
@@ -33,4 +33,17 @@ For the flood predictions, the USGS provides various climate data as a csv file 
 * **Rakshit Pally** 
 * **Dr. Vidya Samadi** 
 * **Dr. Nina Hubig** 
+
+## Cite Our Work
+If you are interested in our work from an academic standpoint, please cite our paper:
+
+```bibtex
+@article{windheuserend,
+  title={An End-to-End Flood Stage Prediction System Using Deep Neural Networks},
+  author={Windheuser, L and Karanjit, R and Pally, R and Samadi, S and Hubig, NC},
+  journal={Earth and Space Science},
+  pages={e2022EA002385},
+  publisher={Wiley Online Library}
+}
+```
 
