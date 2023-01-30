@@ -20,13 +20,13 @@ The different models, which were compared in the paper, are in `./predict_floodi
 
 If you find our code or paper, published at the AGU Earth & Space Science, useful we encourage you to cite our paper. BibTeX:
 
-@article{windheuserend,
+`@article{windheuserend,
   title={An End-to-End Flood Stage Prediction System Using Deep Neural Networks},
   author={Windheuser, L and Karanjit, R and Pally, R and Samadi, S and Hubig, NC},
   journal={Earth and Space Science},
   pages={e2022EA002385},
   publisher={Wiley Online Library}
-}
+}`
 
 ## Datasets
 We used the data provided by the [United States Geological Survey (USGS)](https://www.usgs.gov/).
