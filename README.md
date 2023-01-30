@@ -19,6 +19,7 @@ The CNN and the U-Net is implemented in `./estimate_depth/models/`.
 The different models, which were compared in the paper, are in `./predict_flooding/models/`.
 
 If you find our code or paper, published at the AGU Earth & Space Science, useful we encourage you to cite our paper. BibTeX:
+
 @article{windheuserend,
   title={An End-to-End Flood Stage Prediction System Using Deep Neural Networks},
   author={Windheuser, L and Karanjit, R and Pally, R and Samadi, S and Hubig, NC},
