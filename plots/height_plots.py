@@ -6,7 +6,6 @@ plt.rc('xtick', labelsize=20)
 plt.rc('ytick', labelsize=20)
 plt.rcParams.update({'font.size': 20})
 
-
 def violin_plot(prefix):
     columbus = pd.read_csv(prefix + "chattahoochee-columbus.csv")
     helen = pd.read_csv(prefix + "chattahoochee-helen.csv")
